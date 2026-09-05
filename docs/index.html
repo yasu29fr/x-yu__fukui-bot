@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <title>X 投稿予約</title>
     <!-- ?v= は更新のたびに変える。変えないとブラウザが古いものを使い続ける -->
-    <link rel="stylesheet" href="./styles.css?v=20260905b" />
+    <link rel="stylesheet" href="./styles.css?v=20260905c" />
   </head>
   <body>
     <header class="topbar">
@@ -125,7 +125,14 @@
         </label>
         <label>
           アフィリエイトのURL
-          <input id="p-url" type="url" placeholder="https://amzn.to/xxxx" autocomplete="off" />
+          <input id="p-url" type="url" placeholder="https://www.amazon.co.jp/dp/XXXXXXXXXX?...&amp;tag=..." autocomplete="off" />
+          <p class="note">
+            アソシエイト・ツールバーの「テキスト」で出る<strong>フルURL</strong>を貼ってください。
+            取得するたびに <code>linkId</code> が変わりますが、それは正常です。
+            大事なのは <strong><code>tag=</code> が入っていること</strong>だけ。
+            短縮URLはタグの有無が見えないので、おすすめしません。
+            X では URL の長さは一律 23 として数えるので、長くても不利になりません。
+          </p>
         </label>
         <label>
           実際に使ってどうだったか
@@ -305,6 +312,6 @@
       <p id="history-empty" class="empty" hidden>まだ投稿はありません。</p>
     </section>
 
-    <script src="./app.js?v=20260905b"></script>
+    <script src="./app.js?v=20260905c"></script>
   </body>
 </html>

@@ -477,9 +477,28 @@
     if (!/^https?:\/\//.test(url)) return banner("URL は http から始まる形で入れてください。", "error");
     if (!hasAffiliateLink([url])) {
       return banner(
-        "Amazon のURLに見えません（amzn.to / amazon.co.jp など）。念のため確かめてください。",
+        "Amazon のURLに見えません（amazon.co.jp / amzn.to / link.amazon など）。確かめてください。",
         "error",
       );
+    }
+    // URL は取得するたびに linkId が変わる。それは正常で、見るべきなのはタグだけ。
+    // タグの無いリンクはエラーにならず、成果がゼロのまま気づけないので、ここで止める。
+    if (/amazon\.(co\.jp|com)/.test(url) && !/[?&]tag=[^&\s]+/.test(url)) {
+      return banner(
+        "このURLにアソシエイトタグ（tag=...）が入っていません。" +
+          "このまま貼っても成果が付きません。アソシエイト・ツールバーの「テキスト」から取り直してください。",
+        "error",
+      );
+    }
+    if (!/[?&]tag=[^&\s]+/.test(url)) {
+      // 短縮 URL はタグの有無を見た目で判断できない。止めはしないが、一度確認させる。
+      const ok = window.confirm(
+        "短縮URLのため、アソシエイトタグが入っているか確認できません。\n\n" +
+          "タグの無いリンクでは成果が付きません。\n" +
+          "amazon.co.jp/dp/... の形（tag=... が見えるもの）を使うほうが確実です。\n\n" +
+          "このまま登録しますか。",
+      );
+      if (!ok) return;
     }
     // 「|」はネタ帳での区切り記号。混ざると行が壊れる。
     if ([name, url, memo].some((value) => value.includes("|"))) {
