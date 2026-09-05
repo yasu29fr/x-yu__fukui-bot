@@ -160,3 +160,36 @@ class URLWeightTest(unittest.TestCase):
     def test_text_without_url_unchanged(self):
         self.assertEqual(client.weighted_length("あいう"), 6)
         self.assertEqual(client.weighted_length("abc"), 3)
+
+
+class AffiliatePRTest(unittest.TestCase):
+    """アフィリエイトのリンクを含む投稿は、冒頭のPR表記を必須にする。"""
+
+    def _item(self, **over):
+        base = {"text": "本文です。", "scheduled_at": "2026-09-10T07:00"}
+        base.update(over)
+        return base
+
+    def _load(self, raw):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "q.jsonl"
+            path.write_text(json.dumps(raw, ensure_ascii=False) + "\n", encoding="utf-8")
+            return queue.load_queue(path)
+
+    def test_link_without_pr_is_rejected(self):
+        with self.assertRaises(queue.QueueError):
+            self._load(self._item(thread=["続きです https://amzn.to/abc"]))
+
+    def test_link_with_pr_prefix_is_accepted(self):
+        items = self._load(
+            self._item(text="【PR】使っている三脚の話です。", thread=["【PR】三脚\nhttps://amzn.to/abc"])
+        )
+        self.assertEqual(len(items), 1)
+
+    def test_pr_at_the_end_is_rejected(self):
+        with self.assertRaises(queue.QueueError):
+            self._load(self._item(text="三脚の話です。#PR", thread=["https://amzn.to/abc"]))
+
+    def test_non_affiliate_url_needs_no_pr(self):
+        items = self._load(self._item(thread=["https://note.com/yuchannel/n/x"]))
+        self.assertEqual(len(items), 1)

@@ -66,6 +66,10 @@ SLOTS = [
     ),
 ]
 
+# 紹介（アフィリエイト）を入れてよい枠。1 日 1 本まで。
+# 朝と夜は紹介を入れない。宣伝ばかりのアカウントに見せないため。
+PR_HOUR = 12
+
 # 未指定のときに上から順に探すモデル
 MODEL_PREFERENCE = ("opus", "sonnet", "haiku")
 
@@ -189,7 +193,7 @@ def describe_filled(filled: dict[int, dict]) -> str:
     return "\n".join(parts)
 
 
-def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled) -> str:
+def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled, product=None, pr_hour=None) -> str:
     slot_lines = "\n".join(
         f"- {hour}:00 ｜ 柱: {pillar} ｜ 型: {form} ｜ ねらい: {aim}"
         for hour, pillar, form, aim in needed
@@ -209,9 +213,6 @@ def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled
         "この発信は、撮影機材とガジェットを実際に使っている人の話にします。",
         "カメラ・レンズ・マイク・照明・編集まわりの道具、その使いどころと失敗。",
         "",
-        "**いまは商品の紹介・宣伝を一切しません。**",
-        "アフィリエイトのリンクや、購入をすすめる書き方をしないこと。",
-        "読んで役に立つ話だけを積む段階です。",
         "",
         "書くのは、実際に使ってみて分かったことに限ります。",
         "使っていない道具のスペックを並べた紹介は書かないこと。",
@@ -223,6 +224,27 @@ def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled
             "これらとネタ・切り口・書き出しが重ならないようにしてください。",
             "文体もこれらに寄せてください。",
             already,
+            "",
+        ]
+    if product and pr_hour is not None:
+        sections += [
+            f"## {pr_hour}:00 の枠だけ、商品の紹介です",
+            "",
+            f"紹介する商品: {product['name']}",
+            f"本人のメモ: {product['memo'] or '（なし）'}",
+            "",
+            "この枠の書き方には、守っていただく決まりがあります。",
+            "",
+            "1. **本文の冒頭を必ず「【PR】」で始める。** 末尾ではなく先頭です（ステマ規制）",
+            "2. **URL は絶対に書かない。** リンクはこちらで別に付けます。",
+            "   「詳細はこちら」のような誘導文も本文に入れないこと",
+            "3. 本人のメモに書かれている範囲のことだけを書く。",
+            "   使っていない機能や、確かめていない良さを足さないこと",
+            "4. スペックの列挙にしない。実際に使ってどうだったかを書く",
+            "5. 「買うべき」「おすすめです」と言い切らない。判断は読む人に任せる",
+            "6. 合わない人・向かない場面にも一言触れる。良いことだけ並べない",
+            "",
+            "本文は【PR】を含めて日本語 60〜120 字。thread は付けないでください。",
             "",
         ]
     sections += [
@@ -356,6 +378,55 @@ def generate(api_key: str, model: str, prompt: str, expected: int) -> list[dict]
     return []
 
 
+# ネタ帳の「## 紹介する商品」に書かれた行を読み取る。
+#
+#   - 商品名 | https://amzn.to/xxxx | 一言メモ
+#
+# URL は AI に渡さず、ここで読んだ文字列をそのまま投稿に入れる。
+# AI に URL を書かせると、1 文字変わっただけで別の場所へ飛ぶため。
+PRODUCT_SECTION = re.compile(
+    r"^##\s*紹介する商品.*?$(.*?)(?=^##\s|\Z)", re.M | re.S
+)
+PRODUCT_LINE = re.compile(r"^\s*[-・]\s*(.+?)\s*\|\s*(https?://\S+)\s*(?:\|\s*(.*))?$")
+
+PR_MARKERS = ("【PR】", "#PR", "＃PR", "[PR]")
+
+
+def parse_products(neta: str) -> list[dict]:
+    """ネタ帳から紹介候補の商品を読み取る。"""
+    section = PRODUCT_SECTION.search(neta or "")
+    if not section:
+        return []
+    products = []
+    for line in section.group(1).splitlines():
+        matched = PRODUCT_LINE.match(line)
+        if matched:
+            products.append(
+                {
+                    "name": matched.group(1).strip(),
+                    "url": matched.group(2).strip(),
+                    "memo": (matched.group(3) or "").strip(),
+                }
+            )
+    return products
+
+
+def pick_product(products: list[dict], entries: list[dict]) -> dict | None:
+    """まだ紹介していない商品を 1 つ選ぶ。"""
+    used = set()
+    for entry in entries:
+        for part in [entry.get("text", ""), *(entry.get("thread") or [])]:
+            for url in URL_IN_TEXT.findall(part or ""):
+                used.add(url)
+    for product in products:
+        if product["url"] not in used:
+            return product
+    return None
+
+
+URL_IN_TEXT = re.compile(r"https?://\S+")
+
+
 def new_id(hour: int, existing: set[str]) -> str:
     stamp = datetime.now(JST).strftime("%Y%m%d")
     while True:
@@ -391,8 +462,30 @@ def main() -> None:
     board = fetch_doc(os.environ.get("BOARD_DOC_ID", "").strip(), "運用ボード")
     neta = fetch_doc(os.environ.get("NETA_DOC_ID", "").strip(), "ネタ帳")
 
+    # 紹介枠。ネタ帳に商品が書かれていて、その枠が空いているときだけ立つ。
+    # 1 日 1 本まで（PR_HOUR の枠のみ）。
+    products = parse_products(neta)
+    product = None
+    if products and any(hour == PR_HOUR for hour, *_ in needed):
+        product = pick_product(products, entries)
+        if product:
+            print(f"紹介枠: {PR_HOUR}:00 ｜ {product['name']}")
+        else:
+            print("紹介枠: 候補はありますが、すべて紹介済みです。通常の投稿にします。")
+    elif products:
+        print(f"紹介枠: {PR_HOUR}:00 はすでに埋まっているため、今回は紹介しません。")
+
     model = pick_model(api_key)
-    prompt = build_prompt(board, neta, recent_texts(entries), target_date, needed, filled)
+    prompt = build_prompt(
+        board,
+        neta,
+        recent_texts(entries),
+        target_date,
+        needed,
+        filled,
+        product=product,
+        pr_hour=PR_HOUR if product else None,
+    )
     posts = generate(api_key, model, prompt, len(needed))
 
     by_hour = {int(p["hour"]): p for p in posts}
@@ -405,6 +498,19 @@ def main() -> None:
         if not text:
             fail(f"{hour}:00 の本文が空です。")
         thread = [t.strip() for t in (post.get("thread") or []) if t and t.strip()]
+
+        if product and hour == PR_HOUR:
+            # 本文に URL が紛れ込んでいたら止める。AI に URL を書かせない方針のため。
+            if URL_IN_TEXT.search(text):
+                fail(f"{hour}:00 の本文に URL が入っています。この枠では本文にリンクを書きません。")
+            if not text.startswith(PR_MARKERS):
+                fail(
+                    f"{hour}:00 の本文が【PR】で始まっていません（先頭 20 字: {text[:20]!r}）。"
+                    "ステマ規制のため、冒頭の表記は必須です。"
+                )
+            # リンクはネタ帳に書かれた文字列をそのまま使う。AI を通さない。
+            thread = [f"【PR】{product['name']}\n{product['url']}"]
+
         for part in [text, *thread]:
             length = weighted_length(part)
             if length > 280:

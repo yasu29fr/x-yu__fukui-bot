@@ -14,6 +14,14 @@ from zoneinfo import ZoneInfo
 
 from .client import MAX_TEXT_LENGTH, weighted_length
 
+# アフィリエイトのリンクとみなすもの。ここに載っていないASPを使うときは足す。
+AFFILIATE_HOSTS = ("amzn.to", "amzn.asia", "amazon.co.jp", "amazon.com")
+PR_MARKERS = ("【PR】", "[PR]", "#PR", "＃PR", "【広告】")
+
+
+def _has_affiliate_link(parts: list[str]) -> bool:
+    return any(host in (part or "") for part in parts for host in AFFILIATE_HOSTS)
+
 VALID_REPLY_CONTROLS = {"everyone", "accounts_you_follow", "mentioned_only"}
 
 
@@ -80,6 +88,14 @@ def _parse_item(raw: dict, *, line_number: int, tz: ZoneInfo) -> QueueItem:
                 f"{where}: thread の {index} 件目が上限を超えています"
                 f"（{part_length} / {MAX_TEXT_LENGTH}）"
             )
+
+    # アフィリエイトのリンクを含む投稿は、本文の冒頭に PR 表記が要る。
+    # 景品表示法（ステマ規制）の対象。末尾やハッシュタグの列に埋めるのは不可。
+    if _has_affiliate_link([text, *thread]) and not text.lstrip().startswith(PR_MARKERS):
+        raise QueueError(
+            f"{where}: アフィリエイトのリンクを含む投稿は、本文の冒頭を"
+            f"{ '／'.join(PR_MARKERS) } のいずれかで始めてください（ステマ規制）。"
+        )
 
     reply_control = raw.get("reply_control")
     if reply_control is not None and reply_control not in VALID_REPLY_CONTROLS:
