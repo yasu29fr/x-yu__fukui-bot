@@ -5,6 +5,8 @@ name: X 認証の確認
 # Secrets を入れ替えたあと、投稿を試す前にここで確かめる。
 
 on:
+  repository_dispatch:
+    types: [x-auth-check]
   workflow_dispatch:
 
 jobs:
