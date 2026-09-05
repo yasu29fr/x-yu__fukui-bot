@@ -17,7 +17,14 @@
   const URL_WEIGHT = 23;
 
   // アフィリエイトのリンクを含む投稿は、冒頭の PR 表記が要る（ステマ規制）。
-  const AFFILIATE_HOSTS = ["amzn.to", "amzn.asia", "amazon.co.jp", "amazon.com"];
+  // Amazon の短縮 URL は複数ある。見落とすと PR 表記の検査をすり抜ける。
+  const AFFILIATE_HOSTS = [
+    "amzn.to",
+    "amzn.asia",
+    "link.amazon",
+    "amazon.co.jp",
+    "amazon.com",
+  ];
   const PR_MARKERS = ["【PR】", "[PR]", "#PR", "＃PR", "【広告】"];
 
   /** X の数え方に合わせた長さ。ラテン文字は 1、日本語などは 2、URL は 23。 */

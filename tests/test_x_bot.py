@@ -193,3 +193,19 @@ class AffiliatePRTest(unittest.TestCase):
     def test_non_affiliate_url_needs_no_pr(self):
         items = self._load(self._item(thread=["https://note.com/yuchannel/n/x"]))
         self.assertEqual(len(items), 1)
+
+
+class AffiliateHostTest(unittest.TestCase):
+    """Amazon の短縮 URL は複数ある。どれも PR 表記の検査対象にする。"""
+
+    def _load(self, raw):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "q.jsonl"
+            path.write_text(json.dumps(raw, ensure_ascii=False) + "\n", encoding="utf-8")
+            return queue.load_queue(path)
+
+    def test_each_host_needs_pr(self):
+        for host in ["amzn.to/x", "amzn.asia/d/x", "link.amazon/B01TJpKCc", "www.amazon.co.jp/dp/x"]:
+            with self.subTest(host=host):
+                with self.assertRaises(queue.QueueError):
+                    self._load({"text": "本文", "thread": [f"https://{host}"], "scheduled_at": "2026-09-10T07:00"})

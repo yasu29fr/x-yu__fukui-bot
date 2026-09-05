@@ -15,7 +15,15 @@ from zoneinfo import ZoneInfo
 from .client import MAX_TEXT_LENGTH, weighted_length
 
 # アフィリエイトのリンクとみなすもの。ここに載っていないASPを使うときは足す。
-AFFILIATE_HOSTS = ("amzn.to", "amzn.asia", "amazon.co.jp", "amazon.com")
+# Amazon の短縮 URL は複数ある。SiteStripe が出す形が変わることもあるので、
+# 見落とすと PR 表記の検査をすり抜ける。増えたらここに足す。
+AFFILIATE_HOSTS = (
+    "amzn.to",
+    "amzn.asia",
+    "link.amazon",
+    "amazon.co.jp",
+    "amazon.com",
+)
 PR_MARKERS = ("【PR】", "[PR]", "#PR", "＃PR", "【広告】")
 
 
