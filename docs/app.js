@@ -415,7 +415,13 @@
     const response = await fetch(app.cfg.notesUrl, {
       method: "POST",
       headers: { "content-type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ secret: app.cfg.notesSecret, at: noteStamp(), ...payload }),
+      // target は宛先のネタ帳。1 つの Apps Script で Threads と X の両方を扱うため。
+      body: JSON.stringify({
+        secret: app.cfg.notesSecret,
+        target: "x",
+        at: noteStamp(),
+        ...payload,
+      }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(`記録先が応答しません (HTTP ${response.status})`);

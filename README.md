@@ -150,7 +150,19 @@ Headers: Accept: application/vnd.github+json
 美容・健康系は薬機法の確認が要るため、**AI が書いたものをそのまま公開しない**
 運用に切り替えてください。
 
-## 7. ファイル構成
+## 7. 予約画面とネタ帳の記録先
+
+予約画面は GitHub Pages で公開する（Settings → Pages → main / `/docs`）。
+
+ネタ帳への書き込みは Google Apps Script を中継する。**Threads 用と同じ 1 つの
+プロジェクトで、両方のネタ帳をまかなう。** `scripts/notes.gs` の `TARGETS` に
+宛先を並べ、画面は `target` を送って切り替える（この画面は `"x"` を送る）。
+
+プロジェクトを分けないのは、新しく作ると OAuth の承認をやり直すことになり、
+**「The OAuth client is not fully created yet」（401 invalid_client）** で
+止まることがあるため。承認済みのものを使い回すほうが確実。
+
+## 8. ファイル構成
 
 ```
 posts/queue.jsonl        投稿キュー（ここに書けば予約される）
@@ -163,10 +175,12 @@ src/x_bot/
   config.py              環境変数
   cli.py                 post / validate / me
 scripts/compose.py       翌日ぶんの 3 本を作る
+scripts/notes.gs         ネタ帳への中継（Apps Script。Threads と共用）
+docs/                    予約画面（GitHub Pages）
 tests/                   ユニットテスト 15 件（ネットワークを使わない）
 ```
 
-## 8. テスト
+## 9. テスト
 
 ```bash
 PYTHONPATH=src python3 -m unittest discover -s tests
