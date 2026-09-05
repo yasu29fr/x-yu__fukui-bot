@@ -1,0 +1,67 @@
+name: X 予約投稿
+
+# 予約時刻 (scheduled_at) が来た投稿を拾って公開する。
+# 予約時刻が来たものしか出ないので、何度叩かれても投稿は増えない。
+# 起動は外部 cron（cron-job.org）から repository_dispatch: x-tick で行う。
+
+on:
+  repository_dispatch:
+    types: [x-tick]
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "この実行で投稿する件数"
+        required: false
+        default: "5"
+      dry_run:
+        description: "true なら API を呼ばず内容だけ表示する"
+        required: false
+        default: "false"
+
+# 起動が重なっても二重投稿にならないよう直列化する
+concurrency:
+  group: x-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PYTHONPATH: src
+      DRY_RUN: ${{ github.event.inputs.dry_run }}
+      LIMIT: ${{ github.event.inputs.limit }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: キューの形式を検証する
+        run: python -m x_bot validate
+
+      - name: 予約時刻が来た投稿を公開する
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: |
+          args="post --limit ${LIMIT:-5}"
+          if [ "${DRY_RUN}" = "true" ]; then
+            args="$args --dry-run"
+          fi
+          python -m x_bot $args
+
+      - name: 投稿済み記録をコミットする
+        run: |
+          if git diff --quiet -- state/posted.json; then
+            echo "記録に変更はありません。"
+            exit 0
+          fi
+          git config user.name "X Bot"
+          git config user.email "actions@github.com"
+          git add state/posted.json
+          git commit -m "chore: 投稿済み記録を更新"
+          git push
