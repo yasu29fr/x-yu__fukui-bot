@@ -151,9 +151,17 @@ function insertionIndex(body) {
   return count;
 }
 
+/**
+ * 見出しの段落かどうか。
+ *
+ * Google ドキュメントの見出し機能を使わず「## 書き方のヒント」のように
+ * 記号を書いている場合があるので、先頭の # と記号を落としてから比べる。
+ * ここを厳しくすると、追記が黙って末尾に落ちる。
+ */
 function paragraphStartsWith(child, needle) {
   if (child.getType() !== DocumentApp.ElementType.PARAGRAPH) return false;
-  return child.asParagraph().getText().trim().indexOf(needle) === 0;
+  const text = child.asParagraph().getText().replace(/^[\s#*>-]+/, "").trim();
+  return text.indexOf(needle) === 0;
 }
 
 function reply(payload) {
