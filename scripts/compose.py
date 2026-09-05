@@ -31,6 +31,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+# 文字数の数え方は投稿側と同じものを使う（URL は一律 23）。
+# ここで数え方がずれると、投稿できるものを弾いたり、上限超えを見逃したりする。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from x_bot.client import weighted_length  # noqa: E402
+
 JST = ZoneInfo("Asia/Tokyo")
 QUEUE_PATH = Path("posts/queue.jsonl")
 API_BASE = "https://api.anthropic.com/v1"
@@ -63,23 +68,6 @@ SLOTS = [
 
 # 未指定のときに上から順に探すモデル
 MODEL_PREFERENCE = ("opus", "sonnet", "haiku")
-
-
-def weighted_length(text: str) -> int:
-    """X の文字数の数え方。日本語などは 1 文字 2 として数える。"""
-    total = 0
-    for ch in text:
-        code = ord(ch)
-        if (
-            0x0000 <= code <= 0x10FF
-            or 0x2000 <= code <= 0x200D
-            or 0x2010 <= code <= 0x201F
-            or 0x2032 <= code <= 0x2037
-        ):
-            total += 1
-        else:
-            total += 2
-    return total
 
 
 def fail(message: str) -> None:

@@ -32,7 +32,13 @@ jobs:
           import json, os
           user = json.load(open("me.json"))["data"]
           handle = user.get("username", "")
-          print(f"::notice::認証できました: @{handle}（{user.get('name','')}）")
+          metrics = user.get("public_metrics") or {}
+          print(
+              f"::notice::認証できました: @{handle}（{user.get('name','')}）"
+              f" フォロワー={metrics.get('followers_count', '不明')}"
+              f" verified_type={user.get('verified_type', '不明')}"
+              f" subscription_type={user.get('subscription_type', '不明')}"
+          )
           expected = os.environ.get("EXPECTED_USERNAME", "")
           if expected and handle.lower() != expected.lower():
               raise SystemExit(f"::error::想定と違うアカウントです。期待 @{expected} / 実際 @{handle}")

@@ -132,3 +132,31 @@ class QueueTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class URLWeightTest(unittest.TestCase):
+    """X は URL を長さに関係なく 23 として数える。"""
+
+    def test_short_and_long_url_weigh_the_same(self):
+        short = "見てください https://amzn.to/abc"
+        long = (
+            "見てください https://www.amazon.co.jp/dp/B0XXXXXXXX/"
+            "?tag=example-22&linkCode=ogi&th=1&psc=1"
+        )
+        self.assertEqual(client.weighted_length(short), client.weighted_length(long))
+
+    def test_url_counts_as_23(self):
+        self.assertEqual(client.weighted_length("https://amzn.to/abc"), 23)
+
+    def test_japanese_plus_url(self):
+        # 日本語 5 文字 = 10、空白 1、URL 23
+        self.assertEqual(client.weighted_length("あいうえお https://amzn.to/abc"), 34)
+
+    def test_two_urls(self):
+        self.assertEqual(
+            client.weighted_length("https://a.example/x https://b.example/y"), 23 + 1 + 23
+        )
+
+    def test_text_without_url_unchanged(self):
+        self.assertEqual(client.weighted_length("あいう"), 6)
+        self.assertEqual(client.weighted_length("abc"), 3)

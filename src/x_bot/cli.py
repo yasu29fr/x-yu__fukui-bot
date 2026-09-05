@@ -7,6 +7,7 @@ import json
 import logging
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -79,20 +80,61 @@ def _describe(item: QueueItem) -> str:
     return f"[{item.id}] {when} {weighted_length(item.text)}/280 {head!r}"
 
 
-def cmd_me(_args: argparse.Namespace, config: Config) -> int:
-    """トークンの持ち主を確認する。投稿せずに認証だけ試せる。"""
-    url = f"{API_BASE}/users/me"
+# 取りに行く項目。X 側が知らない項目名を混ぜると 400 になるので、
+# 通らなかったときは順に減らして試す。
+ME_FIELDS = (
+    "verified_type,subscription_type,public_metrics",
+    "verified_type,public_metrics",
+    "public_metrics",
+    "",
+)
+
+
+def _fetch_me(config: Config, fields: str) -> dict:
+    base = f"{API_BASE}/users/me"
+    params = {"user.fields": fields} if fields else {}
+    url = base + ("?" + urllib.parse.urlencode(params) if params else "")
     request = urllib.request.Request(url, method="GET")
-    request.add_header("Authorization", _auth_header("GET", url, config.credentials))
+    request.add_header(
+        "Authorization", _auth_header("GET", base, config.credentials, params=params)
+    )
     try:
         with urllib.request.urlopen(request, timeout=config.timeout) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:400]
         raise XError(f"X API エラー ({exc.code}): {detail}") from exc
+
+
+def cmd_me(_args: argparse.Namespace, config: Config) -> int:
+    """トークンの持ち主を確認する。投稿せずに認証だけ試せる。
+
+    ついでにフォロワー数と Premium 加入の有無も取る。
+    Premium かどうかで 1 投稿に書ける長さが変わるため。
+    """
+    last_error: XError | None = None
+    for fields in ME_FIELDS:
+        try:
+            data = _fetch_me(config, fields)
+            break
+        except XError as exc:
+            last_error = exc
+            if "(400)" not in str(exc):
+                raise
+    else:  # すべて 400 だった
+        raise last_error  # type: ignore[misc]
+
     print(json.dumps(data, ensure_ascii=False, indent=2))
     user = data.get("data", {})
-    logger.info("認証できました: @%s（%s）", user.get("username"), user.get("name"))
+    metrics = user.get("public_metrics") or {}
+    logger.info(
+        "認証できました: @%s（%s） フォロワー=%s verified_type=%s subscription_type=%s",
+        user.get("username"),
+        user.get("name"),
+        metrics.get("followers_count", "不明"),
+        user.get("verified_type", "不明"),
+        user.get("subscription_type", "不明"),
+    )
     return 0
 
 

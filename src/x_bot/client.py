@@ -21,6 +21,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 import urllib.error
@@ -29,6 +30,12 @@ import urllib.request
 
 API_BASE = "https://api.x.com/2"
 MAX_TEXT_LENGTH = 280  # 日本語は 1 文字 = 2 カウントで 140 文字相当
+
+# X は URL を t.co で包み直すため、実際の長さに関係なく一律 23 として数える。
+# 短縮 URL でも長い Amazon の URL でも同じ 23。ここを文字数で数えると、
+# 長い URL のときに投稿できるものを弾いてしまう。
+URL_PATTERN = re.compile(r"https?://\S+")
+URL_WEIGHT = 23
 
 
 class XError(Exception):
@@ -62,6 +69,7 @@ def _auth_header(
     url: str,
     credentials: dict[str, str],
     *,
+    params: dict[str, str] | None = None,
     nonce: str | None = None,
     timestamp: str | None = None,
 ) -> str:
@@ -69,6 +77,9 @@ def _auth_header(
 
     POST /2/tweets は本文が JSON なので、署名の対象はクエリと OAuth パラメータだけ
     （本文はフォームエンコードでないため署名に含めない）。
+
+    url にはクエリを付けないこと。クエリがある場合は params に渡す。
+    OAuth 1.0a はクエリも署名対象なので、渡し忘れると 401 になる。
     """
     oauth = {
         "oauth_consumer_key": credentials["api_key"],
@@ -78,10 +89,13 @@ def _auth_header(
         "oauth_token": credentials["access_token"],
         "oauth_version": "1.0",
     }
+    to_sign = dict(oauth)
+    if params:
+        to_sign.update(params)
     oauth["oauth_signature"] = _signature(
         method,
         url,
-        dict(oauth),
+        to_sign,
         credentials["api_secret"],
         credentials["access_token_secret"],
     )
@@ -109,13 +123,8 @@ def load_credentials(env: dict[str, str] | None = None) -> dict[str, str]:
     return credentials
 
 
-def weighted_length(text: str) -> int:
-    """X の文字数の数え方に合わせる。
-
-    ラテン文字などは 1、日本語を含む多くの文字は 2 として数える。
-    正確な仕様は Unicode の範囲で決まるが、ここは実運用で困らない近似にしてある
-    （実際より多めに数える側に倒しているので、上限を超えて弾かれることはない）。
-    """
+def _weigh_plain(text: str) -> int:
+    """URL を含まない文字列の重み。ラテン文字などは 1、日本語などは 2。"""
     total = 0
     for ch in text:
         code = ord(ch)
@@ -128,6 +137,23 @@ def weighted_length(text: str) -> int:
             total += 1
         else:
             total += 2
+    return total
+
+
+def weighted_length(text: str) -> int:
+    """X の文字数の数え方に合わせる。
+
+    ラテン文字などは 1、日本語を含む多くの文字は 2。
+    URL だけは別扱いで、長さに関係なく一律 23 として数える（X が t.co で包むため）。
+    正確な仕様は Unicode の範囲で決まるが、ここは実運用で困らない近似にしてある。
+    """
+    total = 0
+    cursor = 0
+    for match in URL_PATTERN.finditer(text):
+        total += _weigh_plain(text[cursor : match.start()])
+        total += URL_WEIGHT
+        cursor = match.end()
+    total += _weigh_plain(text[cursor:])
     return total
 
 
