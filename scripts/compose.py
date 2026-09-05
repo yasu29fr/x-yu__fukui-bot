@@ -396,21 +396,25 @@ PR_MARKERS = ("【PR】", "#PR", "＃PR", "[PR]")
 
 
 def parse_products(neta: str) -> list[dict]:
-    """ネタ帳から紹介候補の商品を読み取る。"""
-    section = PRODUCT_SECTION.search(neta or "")
-    if not section:
-        return []
+    """ネタ帳から紹介候補の商品を読み取る。
+
+    見出しにマッチする節が複数あることがある（「紹介したい商品」と「紹介する商品」が
+    両方残っている、など）。最初の 1 つだけを見ると、後ろの節に書いた商品が
+    まるごと無視される。エラーにならず、リンクの無い紹介文だけが出る形になるので、
+    **すべての節を見る**こと。
+    """
     products = []
-    for line in section.group(1).splitlines():
-        matched = PRODUCT_LINE.match(line)
-        if matched:
-            products.append(
-                {
-                    "name": matched.group(1).strip(),
-                    "url": matched.group(2).strip(),
-                    "memo": (matched.group(3) or "").strip(),
-                }
-            )
+    for section in PRODUCT_SECTION.finditer(neta or ""):
+        for line in section.group(1).splitlines():
+            matched = PRODUCT_LINE.match(line)
+            if matched:
+                products.append(
+                    {
+                        "name": matched.group(1).strip(),
+                        "url": matched.group(2).strip(),
+                        "memo": (matched.group(3) or "").strip(),
+                    }
+                )
     return products
 
 
