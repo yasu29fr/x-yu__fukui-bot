@@ -1,0 +1,26 @@
+name: X 認証の確認
+
+# 投稿はせず、鍵 4 つが正しく組み合わさっているかだけを見る。
+# GET /2/users/me を叩いて、返ってきたアカウント名を表示する。
+# Secrets を入れ替えたあと、投稿を試す前にここで確かめる。
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 認証だけ確認する（投稿はしない）
+        env:
+          PYTHONPATH: src
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: python -m x_bot me
