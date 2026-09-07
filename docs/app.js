@@ -63,8 +63,31 @@
     const head = String(text || "").trimStart();
     return PR_MARKERS.some((marker) => head.startsWith(marker));
   }
-  const STORE_KEY = "threads-bot.settings";
-  const DRAFT_KEY = "threads-bot.draft";
+  // 保存キーは画面ごとに分ける。
+  //
+  // localStorage はドメイン単位で共有される。Threads 版（/yasu29fr/）とこの画面は
+  // どちらも yasu29fr.github.io にあるため、キーが同じだと設定と下書きが混ざる。
+  // 実際、両方とも "threads-bot.settings" を使っていて上書きし合っていた。
+  const STORE_KEY = "x-bot.settings";
+  const DRAFT_KEY = "x-bot.draft";
+
+  // 以前は Threads 版と同じキーに保存していた。入れ直さずに済むよう、
+  // そこに残っているものがこの画面のものなら 1 度だけ引き継ぐ。
+  const LEGACY_STORE_KEY = "threads-bot.settings";
+
+  function adoptLegacySettings() {
+    try {
+      if (localStorage.getItem(STORE_KEY)) return;
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_STORE_KEY) || "null");
+      // repo がこの画面のものだったときだけ引き継ぐ。Threads 版の設定は触らない。
+      if (legacy && String(legacy.repo || "").includes("x-yu__fukui-bot")) {
+        localStorage.setItem(STORE_KEY, JSON.stringify(legacy));
+      }
+    } catch (error) {
+      // localStorage が使えない環境でも、画面自体は動かす
+    }
+  }
+  adoptLegacySettings();
   const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
   const ANTHROPIC_VERSION = "2023-06-01";
   const PROOFREAD_MODEL = "claude-opus-5";
