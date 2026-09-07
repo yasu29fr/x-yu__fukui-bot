@@ -266,6 +266,20 @@ def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled
             "本文は【PR】を含めて日本語 60〜120 字。thread は付けないでください。",
             "",
         ]
+    if not product:
+        sections += [
+            "## 今日は商品の紹介をしません",
+            "",
+            "紹介できる商品が用意されていません。**どの枠でも商品紹介を書かないでください。**",
+            "",
+            "- 本文を「【PR】」「#PR」「[PR]」で始めない",
+            "- 特定の商品名を出して、良さを伝える書き方をしない",
+            "- 購入をすすめる書き方をしない",
+            "",
+            "材料に商品の情報があっても、今日は使いません。",
+            "道具の話をする場合は、**商品名を出さずに**、やり方や気づきとして書いてください。",
+            "",
+        ]
     sections += [
         *learning_section(),
         "## 運用ボード（文体・書かないこと・品質基準の最優先ルール）",
@@ -498,7 +512,11 @@ def main() -> None:
         if product:
             print(f"紹介枠: {PR_HOUR}:00 ｜ {product['name']}")
         else:
-            print("紹介枠: 候補はありますが、すべて紹介済みです。通常の投稿にします。")
+            print(
+                "::warning::紹介する商品の在庫が切れています"
+                f"（登録 {len(products)} 件はすべて紹介済み）。"
+                "ネタ帳の「紹介する商品」に足すまで、紹介枠は通常の投稿になります。"
+            )
     elif products:
         print(f"紹介枠: {PR_HOUR}:00 はすでに埋まっているため、今回は紹介しません。")
 
@@ -525,6 +543,15 @@ def main() -> None:
         if not text:
             fail(f"{hour}:00 の本文が空です。")
         thread = [t.strip() for t in (post.get("thread") or []) if t and t.strip()]
+
+        if not product and text.startswith(PR_MARKERS):
+            # 紹介枠が立っていないのに PR 投稿が作られた。
+            # リンクが付かないので成果にならず、表示だけが残る。
+            fail(
+                f"{hour}:00 が【PR】で始まっていますが、紹介できる商品がありません"
+                f"（先頭 30 字: {text[:30]!r}）。"
+                "ネタ帳の「紹介する商品」に、まだ紹介していない商品を足してください。"
+            )
 
         if product and hour == PR_HOUR:
             # 本文に URL が紛れ込んでいたら止める。AI に URL を書かせない方針のため。
