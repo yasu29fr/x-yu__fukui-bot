@@ -34,6 +34,7 @@ jobs:
       X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      REVIEW_HOLD_DAYS: ${{ vars.REVIEW_HOLD_DAYS }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
