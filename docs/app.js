@@ -441,21 +441,50 @@
    *   （なし）  … 「書き方のヒント」の直前（ふだんのネタ）
    *   product   … 「## 紹介する商品」の中（アフィリエイトの候補）
    */
+  const NETA_PATH = "neta/ネタ帳.md";
+
+  /**
+   * 見出しの直下に差し込む。見出しが無ければ末尾に作る。
+   * 黙って別の場所に入れないため、見出し行を # 付きで探す。
+   */
+  function insertIntoNeta(markdown, block, heading = "書き足す場所") {
+    const lines = markdown.split("\n");
+    const index = lines.findIndex((line) => /^#{1,6}\s/.test(line) && line.includes(heading));
+    if (index < 0) return `${markdown.replace(/\s+$/, "")}\n\n## ${heading}\n\n${block}\n`;
+    lines.splice(index + 1, 0, "", block.replace(/\s+$/, ""));
+    return lines.join("\n");
+  }
+
+  /**
+   * ネタ帳に 1 件書き足してコミットする。
+   *
+   * 2026-09-14 に置き場所を Google ドキュメントからリポジトリ内の
+   * neta/ネタ帳.md へ移した。Apps Script の中継をやめ、予約と同じ
+   * GitHub の contents API で直接書く。中継URLも合言葉も要らない。
+   */
+  async function commitNeta(block, message, heading) {
+    const file = await getFile(NETA_PATH);
+    if (file.text === null) {
+      throw new Error(`${NETA_PATH} が見つかりません。リポジトリとブランチの設定を確かめてください。`);
+    }
+    await putFile(NETA_PATH, encodeBase64(insertIntoNeta(file.text, block, heading)), file.sha, message);
+  }
+
   async function postToNotes(payload) {
-    const response = await fetch(app.cfg.notesUrl, {
-      method: "POST",
-      headers: { "content-type": "text/plain;charset=utf-8" },
-      // target は宛先のネタ帳。1 つの Apps Script で Threads と X の両方を扱うため。
-      body: JSON.stringify({
-        secret: app.cfg.notesSecret,
-        target: "x",
-        at: noteStamp(),
-        ...payload,
-      }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(`記録先が応答しません (HTTP ${response.status})`);
-    if (!data.ok) throw new Error(data.error || "記録できませんでした。");
+    if (payload.kind === "product") {
+      const name = String(payload.name || "").trim();
+      const url = String(payload.url || "").trim();
+      const memo = String(payload.memo || "").trim();
+      // 「|」は区切り記号。混ざると行が壊れて compose.py が読み取れなくなる。
+      if ([name, url, memo].some((value) => value.includes("|"))) {
+        throw new Error("「|」は使えません。");
+      }
+      const line = `- ${name} | ${url}${memo ? ` | ${memo}` : ""}`;
+      await commitNeta(line, `chore(neta): 紹介する商品に ${name} を追加`, "紹介する商品");
+      return;
+    }
+    const text = String(payload.text || "").trim();
+    await commitNeta(`${noteStamp()}\n\n${text}`, `chore(neta): ${noteStamp()} のネタを記録`);
   }
 
   async function onSaveNote() {
@@ -558,7 +587,8 @@
 
   /** 記録先が設定されているときだけ「記録」を出す。 */
   function updateNotesVisibility() {
-    const ready = Boolean(app.cfg.notesUrl && app.cfg.notesSecret);
+    // ネタ帳はリポジトリの中にあるので、リポジトリとトークンがあれば書ける。
+    const ready = Boolean(app.cfg.repo && app.cfg.token);
     el("open-notes").hidden = !ready;
     el("notes-unset").hidden = ready;
     el("save-note").disabled = !ready;
