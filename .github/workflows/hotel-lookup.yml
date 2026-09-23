@@ -1,0 +1,46 @@
+name: 宿を調べる
+
+# 楽天トラベルで宿を名前から引き、投稿の材料を docs/ に書き出す。
+# 投稿はしない。手で回したときだけ動く。
+on:
+  workflow_dispatch:
+    inputs:
+      宿:
+        description: "宿の名前（複数はカンマ区切り）"
+        required: true
+        default: "グランディア芳泉,コートヤード福井"
+  repository_dispatch:
+    types: [hotel-lookup]
+
+permissions:
+  contents: write
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: 楽天トラベルに聞く
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
+          宿: ${{ inputs.宿 || github.event.client_payload.宿 || 'グランディア芳泉,コートヤード福井' }}
+        run: |
+          set -o pipefail
+          IFS=',' read -ra なまえ <<< "$宿"
+          node "scripts/宿を調べる.mjs" "${なまえ[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 結果を残す
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/宿_調査.md docs/宿.json
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -m "chore(宿): 調査結果を記録"
+          git pull --rebase origin "${GITHUB_REF_NAME}" && git push
