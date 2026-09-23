@@ -1,6 +1,6 @@
 # 楽天トラベルAPIで何が取れるか（自動生成）
 
-調べた日時: 2026-09-24 00:35 JST
+調べた日時: 2026-09-24 00:38 JST
 
 ```
 
@@ -21,18 +21,30 @@
 --- 施設検索で返ってきた項目名 ---
   hotelNo、hotelName、hotelInformationUrl、planListUrl、dpPlanListUrl、reviewUrl、hotelKanaName、hotelSpecial、hotelMinCharge、latitude、longitude、postalCode、address1、address2、telephoneNo、faxNo、access、parkingInformation、nearestStation、hotelImageUrl、hotelThumbnailUrl、roomImageUrl、roomThumbnailUrl、hotelMapImageUrl、reviewCount、reviewAverage、userReview
 
-【施設情報 生の形（ホテルエコノ福井駅前）】OK
+【施設情報 responseType=large】OK
+  項目名: hotels、hotel、hotelBasicInfo、hotelNo、hotelName、hotelInformationUrl、planListUrl、dpPlanListUrl、reviewUrl、hotelKanaName、hotelSpecial、hotelMinCharge、latitude、longitude、postalCode、address1、address2、telephoneNo、faxNo、access、parkingInformation、nearestStation、hotelImageUrl、hotelThumbnailUrl、roomImageUrl、roomThumbnailUrl、hotelMapImageUrl、reviewCount、reviewAverage、userReview、hotelRatingInfo、serviceAverage、locationAverage、roomAverage、equipmentAverage、bathAverage、breakfastAverage、cleanlinessAverage、hotelDetailInfo、reserveTelephoneNo、middleClassCode、smallClassCode、areaName、hotelClassCode、checkinTime、checkoutTime、lastCheckinTime、hotelFacilitiesInfo、hotelRoomNum、roomFacilities、item、hotelFacilities、aboutMealPlace、breakfastPlace、aboutBath、aboutLeisure、handicappedFacilities、linguisticLevel、hotelPolicyInfo、note、cancelPolicy、availableCreditCard、card、aboutCreditCardNote、aboutPointAdd、aboutMileageAdd、hotelOtherInfo、privilege、otherInformation
 
---- 施設情報の生データ（先頭2000字） ---
-{"hotels":[{"hotel":[{"hotelBasicInfo":{"hotelNo":52099,"hotelName":"ホテルエコノ福井駅前","hotelInformationUrl":"https://img.travel.rakuten.co.jp/image/tr/api/if/uPw0Q/?f_no=52099","planListUrl":"https://img.travel.rakuten.co.jp/image/tr/api/if/ZwI4Q/?f_no=52099&f_flg=PLAN","dpPlanListUrl":"https://img.travel.rakuten.co.jp/image/tr/api/if/G02wZ/?noTomariHotel=52099","reviewUrl":"https://img.travel.rakuten.co.jp/image/tr/api/if/50xNk/?f_hotel_no=52099","hotelKanaName":"ほてるえこのふくいえきまえ","hotelSpecial":"駅前アクセス抜群■ウエルカムドリンクサービス■最大4名収容の客室あり■恐竜博物館まで車で約40分","hotelMinCharge":4350,"latitude":129811.62,"longitude":490417.61,"postalCode":"910-0859","address1":"福井県","address2":"福井市日之出1-1-17","telephoneNo":"0776-23-5300","faxNo":"0776-23-5302","access":"■北陸新幹線「福井駅」東口から徒歩1分　■「福井IC」10分　■高速バス乗り場は目の前　【ホテルから】コンビニ徒歩1分","parkingInformation":"先着16台1泊1,200円（予約・入出庫不可、高さ制限無）※ホテル側面駐車場は他ホテルにつき注意。","nearestStation":"福井（福井）","hotelImageUrl":"https://img.travel.rakuten.co.jp/share/HOTEL/52099/52099.jpg","hotelThumbnailUrl":"https://img.travel.rakuten.co.jp/HIMG/90/52099.jpg","roomImageUrl":"https://img.travel.rakuten.co.jp/share/HOTEL/52099/52099_si.jpg","roomThumbnailUrl":"https://img.travel.rakuten.co.jp/HIMG/INTERIOR/52099.jpg","hotelMapImageUrl":"https://img.travel.rakuten.co.jp/share/HOTEL/52099/52099map.gif","reviewCount":5664,"reviewAverage":3.65,"userReview":"フロントの対応が最高、朝食も美味しく大満足フロントのおじ様ホテルマンが、最初から最後までものすごく良い対応をして下さいました!それだけでも大満足です。朝食は無料なのに種類豊富で、特にスクランブルエ…　2026-09-19 07:59:28投稿 <a href=\"https://img.travel.rakuten.co.jp/image/tr/api/if/50xNk/?f_hotel_no=52099\" class=\"3click\">つづきはこちら</a>"}},{"hotelRatingInfo":{"serviceAverage":3.79,"locationAverage":4.01,"roomAverage":3.48,"equipmentAverage":3.39,"bathAverage":3.36,"breakfastAverage":3.78,"cleanlinessAverage":3.5}}]}]}
+  ▼ hotelFacilitiesInfo
+    {"hotelRoomNum":138,"roomFacilities":[{"item":"テレビ"},{"item":"衛星放送"},{"item":"有料ビデオ"},{"item":"衛星放送（無料）"},{"item":"電話"},{"item":"インターネット接続(無線LAN形式)"},{"item":"湯沸かしポット"},{"item":"冷蔵庫"},{"item":"ドライヤー"},{"item":"ズボンプレッサー(貸出)"},{"item":"電気スタンド(貸出)"},{"item":"アイロン(貸出)"},{"item":"加湿器(貸出)"},{"item":"洗浄機付トイレ"},{"item":"ボディーソープ"},{"item":"シャンプー"},{"item":"リンス"},{"item":"ハミガキセット"},{"item":"タオル"},{"item":"バ
 
-（全体は 1769 字）
+  ▼ hotelDetailInfo
+    {"reserveTelephoneNo":"050-2017-8989","middleClassCode":"hukui","smallClassCode":"hukui","areaName":"福井","hotelClassCode":"HOTEL","checkinTime":"15:00","checkoutTime":"10:00","lastCheckinTime":"24:00"}},{"hotelFacilitiesInfo":{"hotelRoomNum":138,"roomFacilities":[{"item":"テレビ"},{"item":"衛星放送"},{"item":"有料ビデオ"},{"item":"衛星放送（無料）"},{"item":"電話"},{"item":"インターネット接続(無線LAN形式)"},{"item":"湯沸かしポット"},{"ite
 
---- 施設情報に出てくる項目名（全部） ---
-  hotels、hotel、hotelBasicInfo、hotelNo、hotelName、hotelInformationUrl、planListUrl、dpPlanListUrl、reviewUrl、hotelKanaName、hotelSpecial、hotelMinCharge、latitude、longitude、postalCode、address1、address2、telephoneNo、faxNo、access、parkingInformation、nearestStation、hotelImageUrl、hotelThumbnailUrl、roomImageUrl、roomThumbnailUrl、hotelMapImageUrl、reviewCount、reviewAverage、userReview、hotelRatingInfo、serviceAverage、locationAverage、roomAverage、equipmentAverage、bathAverage、breakfastAverage、cleanlinessAverage
+  ▼ roomFacilities
+    [{"item":"テレビ"},{"item":"衛星放送"},{"item":"有料ビデオ"},{"item":"衛星放送（無料）"},{"item":"電話"},{"item":"インターネット接続(無線LAN形式)"},{"item":"湯沸かしポット"},{"item":"冷蔵庫"},{"item":"ドライヤー"},{"item":"ズボンプレッサー(貸出)"},{"item":"電気スタンド(貸出)"},{"item":"アイロン(貸出)"},{"item":"加湿器(貸出)"},{"item":"洗浄機付トイレ"},{"item":"ボディーソープ"},{"item":"シャンプー"},{"item":"リンス"},{"item":"ハミガキセット"},{"item":"タオル"},{"item":"バスタオル"},{"item":"ナイトウェア"},{"item":"スリッ
 
---- アフィリエイトURLの確認（formatVersion なし） ---
+  ▼ hotelFacilities
+    [{"item":"●携帯充電器・体温計・爪切り・毛布・氷枕・ソーイングセットなど貸出備品あり。(数量限定)"},{"item":"●ナイトウェア、ヘアブラシ・カミソリ、シャワーキャップはロビーの専用コーナーよりお持ちください。"},{"item":"会議室"},{"item":"禁煙ルーム"},{"item":"自動販売機"},{"item":"コインランドリー(有料)"},{"item":"クリーニングサービス"},{"item":"ファックス送信可"},{"item":"モーニングコール"},{"item":"宅配便"},{"item":"駐車場あり"}],"aboutMealPlace":[{"breakfastPlace":"レストラン"},{"breakfastPlace":"レストラン(バイキング)"}],"aboutBath":[],"aboutLeisure":"福井の観
 
-【アフィリエイト確認】OK
-  affiliate を含む項目: なし
+  ▼ checkinTime
+    "15:00","checkoutTime":"10:00","lastCheckinTime":"24:00"}},{"hotelFacilitiesInfo":{"hotelRoomNum":138,"roomFacilities":[{"item":"テレビ"},{"item":"衛星放送"},{"item":"有料ビデオ"},{"item":"衛星放送（無料）"},{"item":"電話"},{"item":"インターネット接続(無線LAN形式)"},{"item":"湯沸かしポット"},{"item":"冷蔵庫"},{"item":"ドライヤー"},{"item":"ズボンプレッサー(貸出)"},{"item":"電気スタンド(貸出)"},{"item":"アイロン(貸出)"},{"item":"加湿器(貸出)"},{"item":"洗浄機付トイレ"},{"item":"ボディー
+
+  ▼ checkoutTime
+    "10:00","lastCheckinTime":"24:00"}},{"hotelFacilitiesInfo":{"hotelRoomNum":138,"roomFacilities":[{"item":"テレビ"},{"item":"衛星放送"},{"item":"有料ビデオ"},{"item":"衛星放送（無料）"},{"item":"電話"},{"item":"インターネット接続(無線LAN形式)"},{"item":"湯沸かしポット"},{"item":"冷蔵庫"},{"item":"ドライヤー"},{"item":"ズボンプレッサー(貸出)"},{"item":"電気スタンド(貸出)"},{"item":"アイロン(貸出)"},{"item":"加湿器(貸出)"},{"item":"洗浄機付トイレ"},{"item":"ボディーソープ"},{"item":"シャンプー"},
+
+【アフィリエイトIDなし】OK
+  hotelInformationUrl: https://img.travel.rakuten.co.jp/image/tr/api/hs/dQ4dX/?f_no=52099
+
+【アフィリエイトIDあり】OK
+  hotelInformationUrl: https://hb.afl.rakuten.co.jp/hgc/57d349d5.b23354d5.57d349d6.03cbb5c1/?pc=https%3A%2F%2Fimg.travel.rakuten.co.jp%2Fimage%2Ftr%2Fapi%2Fhs%2FdQ4dX%2F%3Ff_no%3D52099
 ```
