@@ -48,7 +48,9 @@ jobs:
           # アプリを「Webアプリケーション」で登録したときだけ要る（未登録なら空で動く）
           RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
-        run: node "scripts/商品を取る.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: |
+          set -o pipefail
+          node "scripts/商品を取る.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: コミットする
         if: ${{ steps.fetch.outputs.added != '0' && !inputs.dry_run }}
