@@ -213,3 +213,30 @@ def 投稿用にする(x: dict) -> dict:
         "memo": f"{印}" + ("" if x.get("手で入れた") else f"楽天の「{x.get('キーワード', '')}」から。") + "・".join(かけら),
         "raw": x,
     }
+
+
+def お得日の品(対象日: date, products: list[dict] | None = None,
+             のぞく: str | None = None, いくつ: int = 3) -> list[dict]:
+    """お得日の枠で並べる商品を返す（複数）。
+
+    その日の商品枠で出すものは「のぞく」に渡して外す。同じ日に同じ商品を
+    2 回出さないため。並びは 今日の商品 と同じものを使い、続きから取る。
+
+    セール中（ポイント倍・値下げ）のものがあれば、そちらを先に出す。
+    お得日は「いま買うと得」を伝える枠なので、値の動いているものが合う。
+    """
+    products = 読む() if products is None else products
+    列 = 並び(products)
+    if not 列:
+        return []
+    始め = (対象日 - 起点).days % len(列)
+    候補, 見た = [], set()
+    for i in range(len(列)):
+        x = 列[(始め + i) % len(列)]
+        鍵 = x.get("url") or x.get("名")
+        if not 鍵 or 鍵 in 見た or 鍵 == のぞく:
+            continue
+        見た.add(鍵)
+        候補.append(x)
+    候補.sort(key=lambda x: 0 if (x.get("セール") or (x.get("ポイント倍") or 1) > 1) else 1)
+    return 候補[:いくつ]

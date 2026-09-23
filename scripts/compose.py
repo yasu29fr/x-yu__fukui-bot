@@ -32,6 +32,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import お得日
 import 商品
 import 宿
 
@@ -118,6 +119,12 @@ SLOTS = [
         "実際に使っている道具の話",
         "C（裏側型）またはB（ノウハウ型）",
         "手を動かしている人だと伝わる。具体が見える",
+    ),
+    (
+        18,
+        "楽天のお得日のお知らせ",
+        "F（紹介型）",
+        "お得日（1日・5と0のつく日・18日）だけ出る枠。該当しない日はこの枠を作らない",
     ),
     (
         21,
@@ -311,7 +318,7 @@ def describe_filled(filled: dict[int, dict]) -> str:
     return "\n".join(parts)
 
 
-def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled, product=None, pr_hour=None, hotel=None, hotel_hour=None) -> str:
+def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled, product=None, pr_hour=None, hotel=None, hotel_hour=None, deal=None, deal_hour=None) -> str:
     slot_lines = "\n".join(
         f"- {hour}:00 ｜ 深さ: {DEPTH.get(hour, 'B')} ｜ 柱: {pillar} ｜ 型: {form} ｜ ねらい: {aim}"
         for hour, pillar, form, aim in needed
@@ -483,9 +490,29 @@ def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled
         "HOUR には 7 / 12 / 21 のいずれかの数字だけを書きます。",
     ]
     if hotel and hotel_hour is not None:
+        # 5と0のつく日は、楽天トラベルのクーポンが出る（エントリー不要）。
+        # 宿にはふだん「期限」が作れないが、この日だけは作れる。
+        旅の得 = お得日.旅(target_date)
         sections += [
             f"## {hotel_hour}:00 の枠だけ、宿の紹介です（楽天トラベル・PR）",
             "",
+            *(
+                [
+                    f"### 今日は楽天トラベルの「{旅の得['名']}」です",
+                    f"{旅の得['何が']}。{旅の得['条件']}",
+                    "",
+                    "**この日だけは、本文に「今日はクーポンが出ている日」だと必ず書いてください。**",
+                    "代表共有のnote記事で成果が出た型は「誰向け ＋ どんなお得 ＋ 期限」。",
+                    "宿にはふだん期限が作れませんが、今日は期限があります。",
+                    "",
+                    "- **割引率の数字は書かない。** 楽天のキャンペーンは予告なく変わります",
+                    "- 「今日中にクーポンを取れる」ことは書いてよい",
+                    "- 楽天トラベルのこの日はエントリーが要りません。要ると書かないこと",
+                    "",
+                ]
+                if 旅の得
+                else []
+            ),
             f"今日の切り口: {hotel['name']}",
             f"材料（楽天トラベルに載っている内容）: {hotel['memo']}",
             "",
@@ -500,6 +527,48 @@ def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled
             "",
             "紹介できる宿が用意されていません。**どの枠でも宿の紹介を書かないでください。**",
             "宿の名前を出して良さを伝える書き方をしない。予約をすすめる書き方をしない。",
+            "",
+        ]
+    if deal and deal_hour is not None:
+        sections += [
+            f"## {deal_hour}:00 の枠だけ、今日のお得日の話です（楽天市場・PR）",
+            "",
+            f"今日は「{deal['お得日']['名']}」（{deal['お得日']['いつ']}）。{deal['お得日']['何が']}。",
+            f"条件: {deal['お得日']['条件']}",
+            "",
+            "この枠で並べる商品（渡したものだけ。足さないこと）:",
+            *[
+                f"- {x['name']}｜"
+                + "・".join(
+                    かけら
+                    for かけら in x["memo"].split("・")
+                    if "ポイント" not in かけら
+                )
+                for x in deal["商品"]
+            ],
+            "",
+            "この枠の書き方には、守っていただく決まりがあります。",
+            "",
+            "1. **本文の冒頭を必ず「【PR】」で始める。** 末尾ではなく先頭です（ステマ規制）",
+            "2. **1行目で「誰に向けた話か」をはっきり書く。**",
+            "   例：「スマホで撮っている人へ」。全員に向けて書かないこと",
+            "3. **倍率・割引率などの数字は書かない。** 楽天のキャンペーンは予告なく変わります。",
+            "   変わった日に嘘になるので、「ポイントが増える日」までにとどめて、",
+            "   くわしい条件はリンク先で見てもらってください",
+            "4. **エントリーが要ることを必ず書く。**",
+            "   忘れると1円も得をしません。書かないと読む人に損をさせます",
+            *(
+                ["5. **ゴールド会員以上が対象だと必ず書く。**",
+                 "   誰でも得をする日ではありません。書かないと嘘になります"]
+                if not deal["お得日"].get("誰でも", True)
+                else ["5. 会員ランクの条件はありません。誰でも参加できる日です"]
+            ),
+            f"6. **いつまでかを書く（{deal['お得日']['期限']}）。** いま見る理由になります",
+            "7. **URL は絶対に書かない。** リンクは連投（コメント欄）にこちらで付けます",
+            "8. 「買うべき」と言い切らない。得なのは値段ではなくポイントです",
+            "",
+            "本文は【PR】を含めて日本語 60〜120 字。短いほうが読まれます。",
+            "連投（リンク）はこちらで付けるので、thread は空のままにしてください。",
             "",
         ]
     return "\n".join(sections)
@@ -626,6 +695,8 @@ def source_urls(text: str, thread: list[str]) -> set[str]:
 # 宿の紹介枠（2026-09-23 代表指示）。楽天トラベルのアフィリエイト。
 # どの宿をどの切り口で出すかは scripts/宿.py が日付から決める。
 # 3アカウントとも同じリスト・同じ計算なので、同じ日には同じ内容になる。
+DEAL_HOUR = 18
+
 HOTEL_HOUR = 21
 
 # 【PR】の印。本文の先頭に無ければ止める（ステマ規制）。
@@ -673,6 +744,40 @@ def 宿の決まり(選んだ: dict) -> list[str]:
 
 リンクの長さ = weighted_length  # X は URL を 23 字として数える
 リンクの上限 = 270
+
+
+# 倍率・割引率の数字。お得日の枠では書かせない（楽天のキャンペーンは変わる）。
+# 商品名そのものに「P10倍」「20%OFF」が入っていることがあるので、
+# 渡した商品名に含まれる分は見逃す。名前を書き写しただけで止めると、
+# その日の投稿が全部できなくなってしまう。
+倍率の数字 = re.compile(r"(?:ポイント|P)?\s*\d+(?:\.\d+)?\s*(?:倍|％|%|パーセント|割|割引|OFF|off|オフ)")
+
+
+def あやしい倍率(text: str, deal: dict) -> str | None:
+    """本文にある倍率のうち、渡した商品名に無いものを返す。"""
+    名たち = " ".join(x["name"] for x in deal["商品"])
+    for m in 倍率の数字.finditer(text):
+        語 = m.group(0)
+        if 語.replace(" ", "") in 名たち.replace(" ", ""):
+            continue
+        return 語
+    return None
+
+
+def お得日のリンク(deal: dict) -> list[str]:
+    """お得日の枠のリンクを、連投にまとめる。本文には入れない。"""
+    かたまり, いま = [], ""
+    for x in deal["商品"]:
+        行 = f"【PR】{x['name']}\n{x['url']}"
+        つぎ = (いま + "\n\n" + 行) if いま else 行
+        if いま and リンクの長さ(つぎ) > リンクの上限:
+            かたまり.append(いま)
+            いま = 行
+        else:
+            いま = つぎ
+    if いま:
+        かたまり.append(いま)
+    return かたまり
 
 
 def 宿のリンク(選んだ: dict) -> list[str]:
@@ -725,6 +830,9 @@ def main() -> None:
     # すでに埋まっている枠は触らず、空いている枠だけを作る
     filled = find_filled(entries, target_date)
     needed = [slot for slot in SLOTS if slot[0] not in filled]
+    # お得日じゃない日は、お得日の枠を作らない。
+    if not お得日.市場(target_date):
+        needed = [slot for slot in needed if slot[0] != DEAL_HOUR]
     if filled:
         print("すでに予約済みの枠: " + "、".join(f"{h}:00" for h in sorted(filled)))
     if not needed:
@@ -777,6 +885,20 @@ def main() -> None:
     else:
         print("::warning::商品リストが空です。紹介枠は通常の投稿になります。")
 
+    # お得日の枠（2026-09-23 代表指示）。お得日に当たった日だけ出る。
+    # 型は「誰向け ＋ どんなお得 ＋ 期限」。代表共有のnote記事より。
+    # 数字（倍率・割引率）は書かせない。楽天のキャンペーンは予告なく変わるため。
+    deal = None
+    きょうの得 = お得日.市場(target_date)
+    if きょうの得 and 一覧 and any(hour == DEAL_HOUR for hour, *_ in needed):
+        のぞく = (product or {}).get("url")
+        品 = [商品.投稿用にする(x) for x in 商品.お得日の品(target_date, 一覧, のぞく=のぞく)]
+        if 品:
+            deal = {"お得日": きょうの得, "商品": 品}
+            print(f"お得日の枠: {DEAL_HOUR}:00 ｜ {きょうの得['名']} ｜ {len(品)} 件")
+    elif きょうの得:
+        print(f"お得日の枠: 今日は{きょうの得['名']}ですが、枠が埋まっているか商品がありません。")
+
     # 宿の紹介枠（2026-09-23 代表指示）。毎日 1 本、HOTEL_HOUR の枠だけ。
     # どの宿をどの切り口で出すかは scripts/宿.py が日付から決める。
     # 3アカウントとも同じリスト・同じ計算なので、同じ日には同じ内容になる。
@@ -809,6 +931,8 @@ def main() -> None:
         pr_hour=PR_HOUR if product else None,
         hotel=hotel,
         hotel_hour=HOTEL_HOUR if hotel else None,
+        deal=deal,
+        deal_hour=DEAL_HOUR if deal else None,
     )
     posts = generate(api_key, model, prompt, len(needed))
 
@@ -832,7 +956,7 @@ def main() -> None:
             fail(f"{hour}:00 の本文が空です。")
         thread = [t.strip() for t in (post.get("thread") or []) if t and t.strip()]
 
-        if not product and not hotel and text.startswith(PR_MARKERS):
+        if not product and not hotel and not deal and text.startswith(PR_MARKERS):
             # 紹介枠が立っていないのに PR 投稿が作られた。
             # リンクが付かないので成果にならず、表示だけが残る。
             fail(
@@ -869,6 +993,32 @@ def main() -> None:
                     f"{hour}:00 に X の上限を超える要素があります"
                     f"（{length} / 280。日本語なら 140 字まで）。"
                 )
+        if deal and hour == DEAL_HOUR:
+            if URL_IN_TEXT.search(text):
+                fail(f"{hour}:00 の本文に URL が入っています。この枠では本文にリンクを書きません。")
+            if not text.startswith(PR_MARKERS):
+                fail(
+                    f"{hour}:00 の本文が【PR】で始まっていません（先頭 20 字: {text[:20]!r}）。"
+                    "ステマ規制のため、冒頭の表記は必須です。"
+                )
+            if "エントリー" not in text:
+                fail(
+                    f"{hour}:00 の本文に「エントリー」が入っていません。"
+                    "エントリーを忘れると1円も得しないので、必ず書いてください。"
+                )
+            数 = あやしい倍率(text, deal)
+            if 数:
+                fail(
+                    f"{hour}:00 の本文に「{数}」が入っています。"
+                    "楽天のキャンペーンは予告なく変わるので、倍率・割引率の数字は書きません。"
+                )
+            if not deal["お得日"].get("誰でも", True) and "ゴールド" not in text:
+                fail(
+                    f"{hour}:00 はゴールド会員以上だけが対象の日ですが、本文に書かれていません。"
+                    "誰でも得をすると読めてしまうので、必ず書いてください。"
+                )
+            thread = お得日のリンク(deal)
+
         if not hotel and hour == HOTEL_HOUR and text.startswith(PR_MARKERS):
             # 宿の枠が立っていないのに PR 投稿が作られた。
             # リンクが付かないので成果にならず、表示だけが残る。
