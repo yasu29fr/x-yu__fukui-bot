@@ -162,6 +162,10 @@ for (const x of 手で入れた) {
     手で入れた: true,
     むき: x.むき ?? 'プロ',
     メモ: x.メモ ?? '',
+    店コード: x.店コード ?? null,
+    探す語: x.探す語 ?? null,
+    含む: x.含む ?? null,
+    含まない: x.含まない ?? null,
   });
   手動を足した += 1;
 }
@@ -203,7 +207,48 @@ for (const 古い of [...URLで引く.values()]) {
   // itemCode が分かっている商品だけを名指しで引く。
   // URL から itemCode を組み立てるのは無理（店の URL 名と商品番号は別物）。
   // itemCode が無い商品は、下の検索結果から拾って入れる。
-  // 手で選んだ商品は、そのまま使う。楽天への問い合わせはしない。
+  // 手で選んだ商品で「店コード」と「探す語」が書いてあるものは、
+  // その店の中だけを語で検索して引き当てる。当たれば価格・レビュー・
+  // 売り切れが自動で入るようになる。
+  // 当たらなければ、書いてあるリンクをそのまま使う（紹介はできる）。
+  if (古い.手で入れた && !古い.itemCode && 古い.店コード && 古い.探す語) {
+    let 出 = [];
+    try {
+      出 = await 探す(古い.探す語, null, null, { shopCode: 古い.店コード });
+      await new Promise((r) => setTimeout(r, 1100));
+    } catch (e) {
+      console.log(`::warning::「${古い.名}」を店から探せませんでした: ${String(e.message ?? e).slice(0, 140)}`);
+    }
+    const 合う = 出.filter((x) => {
+      const 名 = (x.itemName ?? '').toLowerCase().replace(/[\s　-]/g, '');
+      const 要る = (古い.含む ?? []).every((w) => 名.includes(String(w).toLowerCase().replace(/[\s　-]/g, '')));
+      const 除く = (古い.含まない ?? []).some((w) => 名.includes(String(w).toLowerCase().replace(/[\s　-]/g, '')));
+      return 要る && !除く;
+    });
+    if (合う.length) {
+      const 新 = 商品にする({ ...合う[0], キーワード: '手で選んだもの' }, 古い.追加日, null);
+      新.名 = 古い.名;          // 楽天の商品名は読めないので、こちらで整えた名前を使う
+      新.メモ = 古い.メモ ?? '';
+      新.手で入れた = true;
+      新.むき = 古い.むき ?? 'プロ';
+      新.店コード = 古い.店コード;
+      新.探す語 = 古い.探す語;
+      新.含む = 古い.含む;
+      新.含まない = 古い.含まない;
+      新.売り切れ = false;
+      新.使ったことがある = 古い.使ったことがある ?? false;
+      新.成績 = 古い.成績 ?? null;
+      URLで引く.delete(古い.url);
+      URLで引く.set(新.url, 新);
+      更新数 += 1;
+      console.log(`手で選んだ商品を引き当てました: ${新.名} → ${新.価格.toLocaleString()}円・レビュー${新.レビュー数}件`);
+      continue;
+    }
+    console.log(`::warning::「${古い.名}」は店「${古い.店コード}」の中に見つかりませんでした。`
+      + `書いてあるリンクをそのまま使います（価格とレビューは入りません）。`);
+  }
+
+  // それ以外の手で選んだ商品は、そのまま使う。
   // 商品ページの URL から itemCode は作れず（itemCode はページの HTML にしか無い）、
   // 店の一覧を総当たりしても当たらなかったため。
   // 価格やレビューは入らないが、リンクと名前があれば紹介はできる。
@@ -520,7 +565,7 @@ function 名前を整える(生) {
   return (区切り > 10 ? 切る.slice(0, 区切り) : 切る).replace(/[\/／・,、\s]+$/, '').trim();
 }
 
-async function 探す(キーワード, itemCode, 帯) {
+async function 探す(キーワード, itemCode, 帯, 絞り) {
   const q = new URLSearchParams({
     applicationId: アプリID,
     accessKey: アクセスキー,
@@ -528,6 +573,7 @@ async function 探す(キーワード, itemCode, 帯) {
     hits: '10',
     format: 'json',
   });
+  if (絞り) for (const [k, v] of Object.entries(絞り)) q.set(k, v);
   if (itemCode) {
     // 1 件を名指しで引く。売り切れ・削除の判定に使う。
     q.set('itemCode', itemCode);
