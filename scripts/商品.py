@@ -94,6 +94,8 @@ def 並び(products: list[dict]) -> list[dict]:
     （nginx の smooth weighted round-robin と同じ考え方）で散らす。
     重い商品は間隔が短くなるだけで、隣り合わない。
     """
+    # 売り切れの印が付いたものは選ばない（リンクが死んでいるため）
+    products = [x for x in products if not x.get("売り切れ")]
     if not products:
         return []
 

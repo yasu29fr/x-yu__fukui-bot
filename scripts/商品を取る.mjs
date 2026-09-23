@@ -31,6 +31,12 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 const 設定パス = 'neta/設定.json';
 const 商品パス = 'neta/商品.jsonl';
 const 控えパス = 'neta/商品_はずした.jsonl';
+// 手で選んだ商品。キーワード検索では当てられないもの（DJI や Ulanzi の
+// 特定の型番など）をここに書く。1行1件で、最低限 itemCode か url があればよい。
+//   {"itemCode":"店:番号","url":"https://item.rakuten.co.jp/…/","むき":"プロ"}
+// 商品名・価格・レビューは itemCode から毎週の実行で自動で入る。
+// ここに書いた商品は、成績や古さでは外れない。
+const 手動の置き場 = 'neta/商品_手動.jsonl';
 const エンドポイント = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 
 const アプリID = process.env.RAKUTEN_APP_ID;
@@ -204,20 +210,27 @@ for (const 古い of [...URLで引く.values()]) {
   }
   await new Promise((r) => setTimeout(r, 1100));
 
-  if (!出.length) {
-    消えた.push(古い);
+  const 見つからない = !出.length || (出[0].availability ?? 1) === 0;
+  if (見つからない) {
+    if (古い.手で入れた) {
+      // 手で選んだ商品は勝手に外さない。ただし死んだリンクは貼らせない。
+      // 売り切れの印を付けておくと、compose.py が選ばなくなる。
+      console.log(`::warning::「${古い.名}」が楽天に見つかりません（手で選んだ商品）。`
+        + `紹介からは外しますが、リストには残します。`
+        + `戻らないようなら neta/商品_手動.jsonl から消してください。`);
+      URLで引く.set(古い.url, { ...古い, 売り切れ: true });
+    } else {
+      消えた.push(古い);
+    }
     continue;
   }
   const x = 出[0];
-  if ((x.availability ?? 1) === 0) {
-    消えた.push(古い);
-    continue;
-  }
   const 新 = 商品にする({ ...x, キーワード: 古い.キーワード }, 古い.追加日, 古い);
   新.使ったことがある = 古い.使ったことがある ?? false;
   新.成績 = 古い.成績 ?? null;
   // 手で選んだ印と向きは、引き直しても残す
   if (古い.手で入れた) 新.手で入れた = true;
+  新.売り切れ = false;
   if (古い.むき) 新.むき = 古い.むき;
   if (JSON.stringify(古い) !== JSON.stringify(新)) 更新数 += 1;
   URLで引く.delete(古い.url);
