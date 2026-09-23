@@ -98,33 +98,35 @@ await new Promise((r) => setTimeout(r, 1500));
 console.log('\n--- 施設検索で返ってきた項目名 ---');
 console.log('  ' + Object.keys(一番).join('、'));
 
-const 詳細 = await 呼ぶ(
-  `施設情報（${一番.hotelName}）`,
-  `https://openapi.rakuten.co.jp/engine/api/Travel/HotelDetailSearch/20260731?${共通}`
-  + `&hotelNo=${一番.hotelNo}`
+// 施設情報の生の形をそのまま出す。formatVersion=2 だと入れ子の形が違うため。
+const 生 = await 呼ぶ(
+  `施設情報 生の形（${一番.hotelName}）`,
+  `https://openapi.rakuten.co.jp/engine/api/Travel/HotelDetailSearch/20260731?applicationId=${アプリID}&accessKey=${アクセスキー}&format=json&hotelNo=${一番.hotelNo}`
 );
-if (!詳細) process.exit(0);
+if (生) {
+  const 文 = JSON.stringify(生);
+  console.log('\n--- 施設情報の生データ（先頭2000字） ---');
+  console.log(文.slice(0, 2000));
+  console.log(`\n（全体は ${文.length} 字）`);
+  const 出た = new Set();
+  (function 掘る(o) {
+    if (Array.isArray(o)) return o.forEach(掘る);
+    if (o && typeof o === 'object') {
+      for (const k of Object.keys(o)) { 出た.add(k); 掘る(o[k]); }
+    }
+  })(生);
+  console.log('\n--- 施設情報に出てくる項目名（全部） ---');
+  console.log('  ' + [...出た].join('、'));
+}
 
-const h = (詳細.hotels ?? [])[0];
-const 束 = Array.isArray(h) ? Object.assign({}, ...h) : (h ?? {});
-const d = 束.hotelDetailInfo ?? {};
-const f = 束.hotelFacilitiesInfo ?? {};
-
-console.log('\n--- 時刻まわり ---');
-console.log(`  チェックイン: ${d.checkinTime ?? '—'} ／ 最終: ${d.lastCheckinTime ?? '—'}`);
-console.log(`  チェックアウト: ${d.checkoutTime ?? '—'}`);
-
-const 出す = (名, v) => {
-  const 値 = Array.isArray(v) ? v.flat().filter(Boolean) : (v ? [v] : []);
-  console.log(`\n--- ${名}（${値.length}件） ---`);
-  console.log('  ' + (値.length ? 値.join('、') : '（空）'));
-};
-出す('部屋設備・備品 roomFacilities', f.roomFacilities);
-出す('館内設備 hotelFacilities', f.hotelFacilities);
-出す('風呂 bathInfo', f.bathInfo ?? f.hotelBathInfo);
-出す('身障者設備 handicappedFacilities', f.handicappedFacilities);
-出す('食事場所 aboutMeal', [f.aboutBreakfast, f.aboutDinner]);
-
-console.log('\n--- 返ってきた項目名（全部） ---');
-console.log('  hotelDetailInfo:', Object.keys(d).join('、') || '（なし）');
-console.log('  hotelFacilitiesInfo:', Object.keys(f).join('、') || '（なし）');
+await new Promise((r) => setTimeout(r, 1500));
+console.log('\n--- アフィリエイトURLの確認（formatVersion なし） ---');
+const 確認 = await 呼ぶ(
+  'アフィリエイト確認',
+  `https://openapi.rakuten.co.jp/engine/api/Travel/SimpleHotelSearch/20260731?applicationId=${アプリID}&accessKey=${アクセスキー}&affiliateId=${アフィリエイトID}&format=json&hotelNo=${一番.hotelNo}`
+);
+if (確認) {
+  const 文 = JSON.stringify(確認);
+  const m = 文.match(/"[^"]*[Aa]ffiliate[^"]*":"[^"]{0,90}/g);
+  console.log('  affiliate を含む項目: ' + (m ? m.join(' ／ ') : 'なし'));
+}
