@@ -15,6 +15,10 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 
 const 宿パス = 'neta/宿.jsonl';
+// 手で選んだ宿。施設番号（hotelNo）だけ書けばよい。
+//   {"番号":16207,"エリア":"あわら・三国","メモ":"…"}
+// ここに書いた宿は、上位10軒に入らなくても必ずリストに入る。
+const 手動パス = 'neta/宿_手動.jsonl';
 const 設定パス = 'neta/設定.json';
 const アプリID = process.env.RAKUTEN_APP_ID;
 const アクセスキー = process.env.RAKUTEN_ACCESS_KEY;
@@ -121,6 +125,38 @@ for (const b of 順) {
     調べた日: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10),
   });
   console.log(`  ✓ ${bb.hotelName}（${b.エリア}）評価${bb.reviewAverage}・${bb.reviewCount}件`);
+}
+
+// 手で選んだ宿を足す。上位に入らなくても必ず入れる。
+const 手で選んだ = existsSync(手動パス)
+  ? readFileSync(手動パス, 'utf8').split('\n').filter((l) => l.trim()).map((l) => {
+      try { return JSON.parse(l); } catch { return null; }
+    }).filter((x) => x && x.番号)
+  : [];
+for (const m of 手で選んだ) {
+  if (出.some((x) => x.番号 === m.番号)) {
+    出.find((x) => x.番号 === m.番号).手で選んだ = true;
+    continue;
+  }
+  try {
+    const 詳 = 束((await 呼ぶ(`${元}/HotelDetailSearch/20260731?${鍵}${アフィ}&responseType=large&hotelNo=${m.番号}`)).hotels[0]);
+    await 待つ();
+    const bb = 詳.hotelBasicInfo ?? {}, d = 詳.hotelDetailInfo ?? {}, f = 詳.hotelFacilitiesInfo ?? {}, r = 詳.hotelRatingInfo ?? {};
+    出.push({
+      番号: bb.hotelNo, 名: bb.hotelName, エリア: m.エリア ?? d.areaName ?? '—', エリアコード: d.smallClassCode,
+      住所: `${bb.address1 ?? ''}${bb.address2 ?? ''}`, url: bb.hotelInformationUrl,
+      最寄駅: bb.nearestStation, アクセス: bb.access, 駐車場: bb.parkingInformation,
+      チェックイン: d.checkinTime, 最終チェックイン: d.lastCheckinTime, チェックアウト: d.checkoutTime,
+      部屋数: f.hotelRoomNum, 最安: bb.hotelMinCharge, 特色: bb.hotelSpecial,
+      部屋の備品: 並び(f.roomFacilities), 館内設備: 並び(f.hotelFacilities),
+      朝食の場所: 並び(f.aboutMealPlace), 風呂: 並び(f.aboutBath),
+      評価: bb.reviewAverage, レビュー数: bb.reviewCount,
+      評価の内訳: { 風呂: r.bathAverage, 朝食: r.breakfastAverage, 設備: r.equipmentAverage, 清潔感: r.cleanlinessAverage, 立地: r.locationAverage, 部屋: r.roomAverage, サービス: r.serviceAverage },
+      調べた日: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10),
+      手で選んだ: true,
+    });
+    console.log(`  ★ ${bb.hotelName}（手で選んだ宿）`);
+  } catch (e) { console.log(`::warning::手で選んだ宿 ${m.番号}: ${e.message}`); }
 }
 
 if (書かない) { console.log('\nDRY_RUN なので書きません。'); process.exit(0); }
