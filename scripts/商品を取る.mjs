@@ -81,7 +81,7 @@ const 向きの表 = new Map([
   ...初心者の言葉.map((k) => [k, '初心者']),
   ...プロの言葉.map((k) => [k, 'プロ']),
 ]);
-const 向き = (x) => 向きの表.get(x.キーワード) ?? null;
+const 向き = (x) => 向きの表.get(x.キーワード) ?? x.むき ?? null;
 
 // 「DJI Mic」「Ulanzi 三脚」のように、決まったブランドを狙った言葉かどうか。
 // 設定の「ブランド名」に挙げた語が含まれていれば、その語を返す。
@@ -123,10 +123,15 @@ const URLで引く = new Map(既存.map((x) => [x.url, x]));
 
 // 手で入れた商品を、リストに無ければ足す。あれば印だけ付け直す。
 let 手動を足した = 0;
+const コードで引く = new Map(
+  [...URLで引く.values()].filter((v) => v.itemCode).map((v) => [v.itemCode, v])
+);
 for (const x of 手で入れた) {
-  const 前 = URLで引く.get(x.url);
+  // url ではなく itemCode で見る。取り込んだあと url はアフィリエイトのものに
+  // 変わるので、url で見ると毎回「新しい商品」として二重に入ってしまう。
+  const 前 = (x.itemCode && コードで引く.get(x.itemCode)) || URLで引く.get(x.url);
   if (前) {
-    URLで引く.set(x.url, { ...前, 手で入れた: true, むき: x.むき ?? 前.むき ?? 'プロ' });
+    URLで引く.set(前.url, { ...前, 手で入れた: true, むき: x.むき ?? 前.むき ?? 'プロ' });
     continue;
   }
   URLで引く.set(x.url, {
@@ -146,6 +151,7 @@ for (const x of 手で入れた) {
     使ったことがある: x.使ったことがある ?? false,
     成績: null,
     手で入れた: true,
+    むき: x.むき ?? 'プロ',
   });
   手動を足した += 1;
 }
@@ -210,6 +216,9 @@ for (const 古い of [...URLで引く.values()]) {
   const 新 = 商品にする({ ...x, キーワード: 古い.キーワード }, 古い.追加日, 古い);
   新.使ったことがある = 古い.使ったことがある ?? false;
   新.成績 = 古い.成績 ?? null;
+  // 手で選んだ印と向きは、引き直しても残す
+  if (古い.手で入れた) 新.手で入れた = true;
+  if (古い.むき) 新.むき = 古い.むき;
   if (JSON.stringify(古い) !== JSON.stringify(新)) 更新数 += 1;
   URLで引く.delete(古い.url);
   URLで引く.set(新.url, 新);
