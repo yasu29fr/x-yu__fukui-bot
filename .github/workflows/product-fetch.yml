@@ -55,7 +55,7 @@ jobs:
           node "scripts/商品を取る.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: コミットする
-        if: ${{ steps.fetch.outputs.added != '0' && !inputs.dry_run }}
+        if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
           TARGET="neta/商品.jsonl neta/商品_はずした.jsonl"

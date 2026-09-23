@@ -341,7 +341,7 @@ if (書かない) {
   writeFileSync(商品パス, 出す.map((x) => JSON.stringify(x)).join('\n') + '\n', 'utf8');
   console.log(`${商品パス} は ${出す.length} 件になりました。`);
 }
-出力('added', String(入れるもの.length + 更新数));
+出力('added', String(入れるもの.length + 更新数 + 手動を足した + はずす.length));
 
 // ------------------------------------------------------------------
 
