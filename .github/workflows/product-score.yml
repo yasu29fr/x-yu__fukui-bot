@@ -43,13 +43,14 @@ jobs:
         run: |
           set -euo pipefail
           TARGET="neta/商品.jsonl"
-          if git diff --quiet -- "${TARGET}"; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 新しく作られたファイルは git diff に出ないので、先に add してから見る
+          git add "${TARGET}"
+          if git diff --cached --quiet -- "${TARGET}"; then
             echo "${TARGET} に変更なし。コミットはしません。"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${TARGET}"
           git commit -m "chore(商品): 成績を更新（$(TZ=Asia/Tokyo date +%F)）"
           for attempt in 1 2 3 4; do
             if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then
