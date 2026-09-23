@@ -36,10 +36,22 @@ const アプリID = process.env.RAKUTEN_APP_ID;
 const アクセスキー = process.env.RAKUTEN_ACCESS_KEY;
 const アフィリエイトID = process.env.RAKUTEN_AFFILIATE_ID;
 const 書かない = process.env.DRY_RUN === '1';
-// アプリを「Webアプリケーション」で登録した場合、楽天はリファラーを見る。
+// アプリを「Webアプリケーション」で登録した場合、楽天は Referer と Origin を見る。
+// どちらか片方だと REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING で 403 になる。
 // GitHub Actions から呼ぶときはブラウザではないので、自分で付ける必要がある。
 // 「バックエンドサービス」で登録した場合は空のままでよい。
 const リファラー = (process.env.RAKUTEN_REFERER ?? '').trim();
+// 楽天は Referer と Origin の両方を見る。Origin はリファラーから作る。
+const オリジン = (() => {
+  if (!リファラー) return '';
+  try {
+    return new URL(リファラー).origin;
+  } catch {
+    console.log(`::warning::RAKUTEN_REFERER が URL の形になっていません（https:// から書いてください）`);
+    return '';
+  }
+})();
+console.log(リファラー ? `リファラー: 設定あり（${リファラー.length}文字・オリジン ${オリジン ? 'あり' : 'なし'}）` : 'リファラー: 未設定');
 
 function 止まる(文) {
   console.error(`::error::${文}`);
@@ -137,6 +149,7 @@ async function 探す(キーワード) {
   for (let 回 = 1; 回 <= 3; 回 += 1) {
     const ヘッダ = { accept: 'application/json' };
     if (リファラー) ヘッダ.referer = リファラー;
+    if (オリジン) ヘッダ.origin = オリジン;
     const res = await fetch(`${エンドポイント}?${q}`, { headers: ヘッダ });
     if (res.ok) {
       const data = await res.json();
