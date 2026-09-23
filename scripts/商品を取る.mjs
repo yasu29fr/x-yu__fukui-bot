@@ -30,6 +30,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const 設定パス = 'neta/設定.json';
 const 商品パス = 'neta/商品.jsonl';
+const 控えパス = 'neta/商品_はずした.jsonl';
 const エンドポイント = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 
 const アプリID = process.env.RAKUTEN_APP_ID;
@@ -66,6 +67,9 @@ if (!探しかた || !(探しかた['キーワード'] ?? []).length) {
 
 const 在庫の上限 = 探しかた['在庫の上限'] ?? 10;
 const 一度に足す上限 = 探しかた['1回に入れる件数'] ?? 10;
+const 入れ替えの上限 = 探しかた['1回に入れ替える上限'] ?? 5;
+const 何日で古い = 探しかた['何日で古いとみなすか'] ?? 60;
+const 見限る本数 = 探しかた['伸びを見限る本数'] ?? 3;
 const 最低レビュー数 = 探しかた['最低レビュー数'] ?? 0;
 const 最低価格 = 探しかた['最低価格'] ?? null;
 const 最高価格 = 探しかた['最高価格'] ?? null;
@@ -96,22 +100,57 @@ for (const キーワード of 探しかた['キーワード']) {
   await new Promise((r) => setTimeout(r, 1100));
 }
 
-// すでにある商品は、価格とレビューとセールを更新する
+// すでにある商品を1件ずつ引き直す。検索結果に出てくるかどうかではなく、
+// その商品そのものを itemCode で見にいく。検索の上位から落ちただけなのか、
+// 本当に売り切れ・削除されたのかを、ここで分ける。
 let 更新数 = 0;
-for (const x of 候補) {
-  const 古い = URLで引く.get(x.affiliateUrl);
-  if (!古い) continue;
-  const 新 = 商品にする(x, 古い.追加日, 古い);
+const 消えた = [];
+for (const 古い of [...URLで引く.values()]) {
+  const コード = 古い.itemCode || コードを推す(古い.url);
+  if (!コード) continue;
+  let 出;
+  try {
+    出 = await 探す(null, コード);
+  } catch (e) {
+    console.log(`::warning::「${古い.名}」を引き直せませんでした: ${String(e.message ?? e).slice(0, 120)}`);
+    continue;
+  }
+  await new Promise((r) => setTimeout(r, 1100));
+
+  if (!出.length) {
+    消えた.push(古い);
+    continue;
+  }
+  const x = 出[0];
+  if ((x.availability ?? 1) === 0) {
+    消えた.push(古い);
+    continue;
+  }
+  const 新 = 商品にする({ ...x, キーワード: 古い.キーワード }, 古い.追加日, 古い);
   新.使ったことがある = 古い.使ったことがある ?? false;
   新.成績 = 古い.成績 ?? null;
   if (JSON.stringify(古い) !== JSON.stringify(新)) 更新数 += 1;
-  URLで引く.set(x.affiliateUrl, 新);
+  URLで引く.delete(古い.url);
+  URLで引く.set(新.url, 新);
+}
+console.log(`引き直し: 更新 ${更新数} 件、売り切れ・消えた ${消えた.length} 件`);
+
+// はずすものを決める。売り切れ・消えたものは上限に関係なく必ず外す
+// （リンク切れを残すほうがまずい）。伸びない・古いは上限の中で。
+const はずす = 選び出す(消えた);
+for (const x of はずす) URLで引く.delete(x.url);
+if (はずす.length) {
+  console.log('--- はずすもの ---');
+  for (const x of はずす) console.log(`- ${x.名}（${x.はずす理由}）`);
+  控えに残す(はずす);
+} else {
+  console.log('はずすものはありません。');
 }
 
 // 足りない分だけ新しく入れる
 const 空き = Math.max(0, 在庫の上限 - URLで引く.size);
 const 足せる数 = Math.min(一度に足す上限, 空き);
-console.log(`更新 ${更新数} 件。空き ${空き} 件。今回足すのは最大 ${足せる数} 件。`);
+console.log(`空き ${空き} 件。今回足すのは最大 ${足せる数} 件。`);
 
 const 見た = new Set();
 const 足すもの = 足せる数 === 0 ? [] : 候補
@@ -150,6 +189,84 @@ if (書かない) {
 
 // ------------------------------------------------------------------
 
+
+// はずす候補を決める。
+// - 売り切れ・消えた → 必ず外す（リンク切れを残さない）
+// - 伸びなかった → 何本か出したうえで、平均閲覧が全体の中央値の6割に届かないもの
+// - 古くなった → 追加から日数が経ったもの。ただし成績が中央値以上なら残す
+// 「使ったことがある」商品は、本人の持ち物なので伸び・古さでは外さない。
+function 選び出す(消えた) {
+  const 全部 = [...URLで引く.values()];
+  const 閲覧たち = 全部
+    .map((x) => x.成績 && x.成績.平均閲覧)
+    .filter((v) => typeof v === 'number')
+    .sort((a, b) => a - b);
+  const 中央 = 閲覧たち.length ? 閲覧たち[Math.floor(閲覧たち.length / 2)] : 0;
+
+  const 出 = [];
+  const 入った = new Set();
+  const 入れる = (x, 理由) => {
+    if (入った.has(x.url)) return;
+    入った.add(x.url);
+    出.push({ ...x, はずす理由: 理由 });
+  };
+
+  for (const x of 消えた) 入れる(x, '楽天から消えた、または売り切れ');
+
+  const 上限つき = [];
+  const 足す = (x, 理由) => {
+    if (x.使ったことがある || 入った.has(x.url)) return;
+    上限つき.push({ ...x, はずす理由: 理由 });
+    入った.add(x.url);
+  };
+
+  for (const x of 全部) {
+    const g = x.成績;
+    if (!g || (g.本数 ?? 0) < 見限る本数 || !中央) continue;
+    if (g.平均閲覧 < 中央 * 0.6) {
+      足す(x, `${g.本数}本出して平均閲覧${g.平均閲覧}（全体の中央値${中央}の6割未満）`);
+    }
+  }
+  for (const x of 全部) {
+    const 日数 = 経過日数(x.追加日);
+    if (日数 < 何日で古い) continue;
+    if (x.成績 && 中央 && x.成績.平均閲覧 >= 中央) continue;
+    足す(x, `追加から${日数}日たった`);
+  }
+
+  return [...出, ...上限つき.slice(0, 入れ替えの上限)];
+}
+
+function 経過日数(追加日) {
+  const t = Date.parse(`${追加日}T00:00:00+09:00`);
+  if (Number.isNaN(t)) return 0;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+
+// はずした商品は消さずに控えへ移す。あとで「なぜ消えたか」を追えるようにするため。
+function 控えに残す(はずす) {
+  if (書かない) return;
+  const 今日 = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  const 行 = はずす.map((x) => JSON.stringify({ ...x, はずした日: 今日 })).join('\n') + '\n';
+  try {
+    writeFileSync(控えパス, 行, { flag: 'a' });
+    console.log(`はずした ${はずす.length} 件を ${控えパス} に移しました。`);
+  } catch (e) {
+    console.log(`::warning::控えに残せませんでした: ${e.message}`);
+  }
+}
+
+// アフィリエイトのリンクから楽天の itemCode（店コード:商品番号）を組み立てる。
+// 古い行に itemCode が入っていないときの逃げ道。
+function コードを推す(url) {
+  const m = String(url ?? '').match(/[?&]pc=([^&]+)/);
+  if (!m) return null;
+  let 先;
+  try { 先 = decodeURIComponent(m[1]); } catch { return null; }
+  const n = 先.match(/item\.rakuten\.co\.jp\/([^/]+)\/([^/?#]+)/);
+  return n ? `${n[1]}:${n[2]}` : null;
+}
+
 function 商品にする(x, 追加日, 古い) {
   const ポイント倍 = Number(x.pointRate ?? 1) || 1;
   const 価格 = x.itemPrice ?? 0;
@@ -160,6 +277,7 @@ function 商品にする(x, 追加日, 古い) {
   const 値下げ = Boolean(前の価格 && 価格 && 価格 < 前の価格);
   const セール = ポイント倍 > 1 || 値下げ;
   return {
+    itemCode: x.itemCode ?? null,
     前の価格,
     値下げ,
     名: 名前を整える(x.itemName ?? ''),
@@ -201,19 +319,24 @@ function 名前を整える(生) {
   return (区切り > 10 ? 切る.slice(0, 区切り) : 切る).replace(/[\/／・,、\s]+$/, '').trim();
 }
 
-async function 探す(キーワード) {
+async function 探す(キーワード, itemCode) {
   const q = new URLSearchParams({
     applicationId: アプリID,
     accessKey: アクセスキー,
     affiliateId: アフィリエイトID,
-    keyword: キーワード,
     hits: '10',
-    sort: '-reviewCount',
-    imageFlag: '1',
     format: 'json',
   });
-  if (最低価格) q.set('minPrice', String(最低価格));
-  if (最高価格) q.set('maxPrice', String(最高価格));
+  if (itemCode) {
+    // 1 件を名指しで引く。売り切れ・削除の判定に使う。
+    q.set('itemCode', itemCode);
+  } else {
+    q.set('keyword', キーワード);
+    q.set('sort', '-reviewCount');
+    q.set('imageFlag', '1');
+    if (最低価格) q.set('minPrice', String(最低価格));
+    if (最高価格) q.set('maxPrice', String(最高価格));
+  }
 
   const ヘッダ = { accept: 'application/json' };
   if (リファラー) ヘッダ.referer = リファラー;

@@ -58,12 +58,12 @@ jobs:
         if: ${{ steps.fetch.outputs.added != '0' && !inputs.dry_run }}
         run: |
           set -euo pipefail
-          TARGET="neta/商品.jsonl"
+          TARGET="neta/商品.jsonl neta/商品_はずした.jsonl"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # 新しく作られたファイルは git diff に出ないので、先に add してから見る
-          git add "${TARGET}"
-          if git diff --cached --quiet -- "${TARGET}"; then
+          git add -- ${TARGET} 2>/dev/null || git add "neta/商品.jsonl"
+          if git diff --cached --quiet -- ${TARGET}; then
             echo "${TARGET} に変更なし。コミットはしません。"
             exit 0
           fi
