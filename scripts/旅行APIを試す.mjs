@@ -40,8 +40,13 @@ if (リファラー) ヘッダ.referer = リファラー;
 if (オリジン) ヘッダ.origin = オリジン;
 
 async function 呼ぶ(名前, url) {
-  const res = await fetch(url, { headers: ヘッダ });
-  const 文 = await res.text();
+  let res, 文;
+  for (let 回 = 1; 回 <= 4; 回 += 1) {
+    res = await fetch(url, { headers: ヘッダ });
+    文 = await res.text();
+    if (res.status !== 429) break;
+    await new Promise((r) => setTimeout(r, 1500 * 回));  // レート制限。待って掛け直す
+  }
   if (!res.ok) {
     console.log(`\n【${名前}】HTTP ${res.status}`);
     console.log('  ' + 文.replace(/\s+/g, ' ').slice(0, 300));
@@ -88,6 +93,10 @@ for (const x of 施設.slice(0, 3)) {
 
 const 一番 = 施設[0] && (施設[0].hotelBasicInfo ?? 施設[0]);
 if (!一番) process.exit(0);
+
+await new Promise((r) => setTimeout(r, 1500));
+console.log('\n--- 施設検索で返ってきた項目名 ---');
+console.log('  ' + Object.keys(一番).join('、'));
 
 const 詳細 = await 呼ぶ(
   `施設情報（${一番.hotelName}）`,
