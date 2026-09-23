@@ -1,0 +1,30 @@
+name: 楽天トラベルAPIを試す
+
+# 「ホテルに〇〇ある？」の企画が成立するかを確かめるための、読むだけの実行。
+# 何も書かないし、投稿もしない。手で回したときだけ動く。
+# 企画をやらないと決めたら、このファイルと scripts/旅行APIを試す.mjs は消してよい。
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [travel-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: 楽天トラベルに聞いてみる
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
+        run: |
+          set -o pipefail
+          node "scripts/旅行APIを試す.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
