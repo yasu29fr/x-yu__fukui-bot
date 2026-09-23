@@ -106,7 +106,10 @@ for (const キーワード of 探しかた['キーワード']) {
 let 更新数 = 0;
 const 消えた = [];
 for (const 古い of [...URLで引く.values()]) {
-  const コード = 古い.itemCode || コードを推す(古い.url);
+  // itemCode が分かっている商品だけを名指しで引く。
+  // URL から itemCode を組み立てるのは無理（店の URL 名と商品番号は別物）。
+  // itemCode が無い商品は、下の検索結果から拾って入れる。
+  const コード = 古い.itemCode;
   if (!コード) continue;
   let 出;
   try {
@@ -133,7 +136,23 @@ for (const 古い of [...URLで引く.values()]) {
   URLで引く.delete(古い.url);
   URLで引く.set(新.url, 新);
 }
-console.log(`引き直し: 更新 ${更新数} 件、売り切れ・消えた ${消えた.length} 件`);
+// itemCode をまだ持っていない商品は、キーワード検索の結果に出てきたときだけ更新する。
+// 出てこなくても「消えた」とは決めない（検索の上位から落ちただけかもしれない）。
+let 番号を入れた = 0;
+for (const x of 候補) {
+  const 古い = URLで引く.get(x.affiliateUrl);
+  if (!古い || 古い.itemCode) continue;
+  const 新 = 商品にする(x, 古い.追加日, 古い);
+  新.使ったことがある = 古い.使ったことがある ?? false;
+  新.成績 = 古い.成績 ?? null;
+  URLで引く.set(新.url, 新);
+  番号を入れた += 1;
+}
+const 番号なし = [...URLで引く.values()].filter((x) => !x.itemCode).length;
+console.log(
+  `引き直し: 更新 ${更新数} 件、売り切れ・消えた ${消えた.length} 件、` +
+  `商品番号を入れた ${番号を入れた} 件（まだ番号なし ${番号なし} 件）`
+);
 
 // はずすものを決める。売り切れ・消えたものは上限に関係なく必ず外す
 // （リンク切れを残すほうがまずい）。伸びない・古いは上限の中で。
@@ -254,17 +273,6 @@ function 控えに残す(はずす) {
   } catch (e) {
     console.log(`::warning::控えに残せませんでした: ${e.message}`);
   }
-}
-
-// アフィリエイトのリンクから楽天の itemCode（店コード:商品番号）を組み立てる。
-// 古い行に itemCode が入っていないときの逃げ道。
-function コードを推す(url) {
-  const m = String(url ?? '').match(/[?&]pc=([^&]+)/);
-  if (!m) return null;
-  let 先;
-  try { 先 = decodeURIComponent(m[1]); } catch { return null; }
-  const n = 先.match(/item\.rakuten\.co\.jp\/([^/]+)\/([^/?#]+)/);
-  return n ? `${n[1]}:${n[2]}` : null;
 }
 
 function 商品にする(x, 追加日, 古い) {
