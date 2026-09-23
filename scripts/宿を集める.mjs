@@ -48,41 +48,56 @@ const 待つ = () => new Promise((r) => setTimeout(r, 1600));
 const 束 = (h) => Object.assign({}, ...(Array.isArray(h.hotel) ? h.hotel : [h.hotel ?? h]));
 const 並び = (x) => (Array.isArray(x) ? x : []).map((v) => (typeof v === 'object' ? Object.values(v)[0] : v)).filter(Boolean);
 
-// 福井県の小区分をぜんぶ取る
-let 小区分 = [];
-try {
-  const a = await 呼ぶ(`${元}/GetAreaClass/20131024?${鍵}`);
-  const 日本 = (a.areaClasses?.largeClasses ?? []).flat().find((x) => x.largeClass?.[0]?.largeClassCode === 'japan')
-    ?? (a.areaClasses?.largeClasses ?? [])[0];
-  const 中 = (日本?.largeClass ?? []).flatMap((x) => x.middleClasses ?? []);
-  const 福井 = 中.map((x) => x.middleClass).find((m) => (m?.[0]?.middleClassCode) === 'hukui');
-  小区分 = (福井 ?? []).flatMap((x) => x.smallClasses ?? [])
-    .map((s) => s.smallClass?.[0]).filter(Boolean)
-    .map((s) => ({ コード: s.smallClassCode, 名: s.smallClassName }));
-} catch (e) { console.log(`::warning::区分一覧を取れませんでした: ${e.message}`); }
-if (!小区分.length) 小区分 = [{ コード: 'hukui', 名: '福井' }];
-console.log(`福井県の小区分 ${小区分.length}件: ${小区分.map((s) => `${s.名}(${s.コード})`).join('、')}`);
+// 福井県を地点で拾う。
+// 区分コードの一覧は形が読み取りにくく、1エリアに潰れてしまった。
+// 主要な地点の緯度経度から半径で探すほうが確実で、
+// 「どのエリアの宿か」も確実に分かる（催しのエリアと突き合わせるのに要る）。
+const 地点 = 宿の設定['エリア'] ?? [
+  { 名: '福井市', 緯度: 36.0617, 経度: 136.2236, 半径: 3 },
+  { 名: 'あわら・三国', 緯度: 36.2170, 経度: 136.2290, 半径: 3 },
+  { 名: '勝山・大野', 緯度: 36.0606, 経度: 136.5000, 半径: 3 },
+  { 名: '鯖江・越前市', 緯度: 35.9036, 経度: 136.1857, 半径: 3 },
+  { 名: '敦賀', 緯度: 35.6453, 経度: 136.0555, 半径: 3 },
+  { 名: '小浜・若狭', 緯度: 35.4956, 経度: 135.7470, 半径: 3 },
+];
 
-// 各エリアの宿を集める
 const みな = new Map();
-for (const s of 小区分) {
+for (const p of 地点) {
   try {
-    const r = await 呼ぶ(`${元}/SimpleHotelSearch/20260731?${鍵}&largeClassCode=japan&middleClassCode=hukui&smallClassCode=${s.コード}&hits=30`);
+    const r = await 呼ぶ(`${元}/SimpleHotelSearch/20260731?${鍵}`
+      + `&latitude=${p.緯度}&longitude=${p.経度}&searchRadius=${p.半径}&datumType=1&hits=30`);
+    let n = 0;
     for (const h of (r.hotels ?? [])) {
       const b = 束(h).hotelBasicInfo;
-      if (b) みな.set(b.hotelNo, { ...b, エリア: s.名, エリアコード: s.コード });
+      if (!b || みな.has(b.hotelNo)) continue;
+      みな.set(b.hotelNo, { ...b, エリア: p.名 });
+      n += 1;
     }
-    console.log(`  ${s.名}… ${(r.hotels ?? []).length}件`);
-  } catch (e) { console.log(`::warning::${s.名} で取れませんでした: ${e.message}`); }
+    console.log(`  ${p.名}… ${n}軒`);
+  } catch (e) { console.log(`::warning::${p.名} で取れませんでした: ${e.message}`); }
   await 待つ();
 }
 console.log(`重複を除いて ${みな.size}軒`);
 
 // レビュー数 × 評価 で並べて上位だけ
-const 順 = [...みな.values()]
-  .filter((b) => (b.reviewCount ?? 0) >= 最低レビュー数)
-  .sort((a, b) => (b.reviewCount * b.reviewAverage) - (a.reviewCount * a.reviewAverage))
-  .slice(0, 上限);
+// 並べ方。レビュー数だけで並べると福井市のビジネスホテルで埋まるので、
+// まずエリアごとに上位を取り、そのあと全体で並べる。
+// 「福井に泊まる人」に見せる以上、土地がばらけているほうがよい。
+const エリアごと = 宿の設定['エリアごとに最大'] ?? 2;
+const 点 = (b) => (b.reviewAverage ?? 0) * Math.log10((b.reviewCount ?? 1) + 10);
+const 束ごと = new Map();
+for (const b of みな.values()) {
+  if ((b.reviewCount ?? 0) < 最低レビュー数) continue;
+  if (!束ごと.has(b.エリア)) 束ごと.set(b.エリア, []);
+  束ごと.get(b.エリア).push(b);
+}
+const 候補 = [];
+for (const [名, たち] of 束ごと) {
+  たち.sort((a, b) => 点(b) - 点(a));
+  候補.push(...たち.slice(0, エリアごと));
+  console.log(`  ${名}: ${たち.length}軒 → 上位${Math.min(エリアごと, たち.length)}軒`);
+}
+const 順 = 候補.sort((a, b) => 点(b) - 点(a)).slice(0, 上限);
 console.log(`\n上位 ${順.length}軒を詳しく調べます`);
 
 const 出 = [];
