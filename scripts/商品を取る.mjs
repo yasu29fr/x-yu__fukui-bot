@@ -111,7 +111,7 @@ if (!並べた.length) {
 }
 
 const 行 = 並べた.map((x) => {
-  const 名 = x.itemName.replace(/[|｜\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  const 名 = 名前を整える(x.itemName);
   // 「[未使用]」は compose.py が読む印。
   // これが付いている商品は、本人がまだ使っていない＝使った感想を書かせない。
   const メモ = `[未使用] 楽天の「${x.キーワード}」の検索結果から。${x.itemPrice.toLocaleString()}円・レビュー${x.reviewCount}件（${x.shopName}）`;
@@ -130,6 +130,24 @@ if (書かない) {
 出力('added', String(行.length));
 
 // ------------------------------------------------------------------
+
+// 楽天の商品名は「【期間限定 P10倍】」「＼⭐8%OFFクーポン✨／」のような
+// 煽り文句が前に付く。そのまま投稿に出すと読めないので、ここで落とす。
+function 名前を整える(生) {
+  let s = 生;
+  s = s.replace(/[【［\[][^】］\]]{0,30}[】］\]]/g, ' ');
+  s = s.replace(/[＼\\][^／\/]{0,30}[／\/]/g, ' ');
+  s = s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2B00}-\u{2BFF}]/gu, ' ');
+  s = s.replace(/[♪★☆◆■◎※]/g, ' ');
+  s = s.replace(/[|｜\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+  s = s.replace(/^[\/／・,、\-–—]+|[\/／・,、\-–—]+$/g, '').trim();
+  if (s.length <= 30) return s;
+  const 切る = s.slice(0, 30);
+  const 区切り = Math.max(
+    切る.lastIndexOf(' '), 切る.lastIndexOf('/'), 切る.lastIndexOf('／'), 切る.lastIndexOf('、')
+  );
+  return (区切り > 10 ? 切る.slice(0, 区切り) : 切る).replace(/[\/／・,、\s]+$/, '').trim();
+}
 
 async function 探す(キーワード) {
   const q = new URLSearchParams({
