@@ -58,7 +58,7 @@ const 共通 = `applicationId=${アプリID}&accessKey=${アクセスキー}`
 
 const 一覧 = await 呼ぶ(
   '施設検索（福井県）',
-  `https://openapi.rakuten.co.jp/travelms/api/Travel/SimpleHotelSearch/20260731?${共通}`
+  `https://openapi.rakuten.co.jp/engine/api/Travel/SimpleHotelSearch/20260731?${共通}`
   + '&largeClassCode=japan&middleClassCode=fukui&hits=3'
 );
 
@@ -81,7 +81,7 @@ if (!一番) process.exit(0);
 
 const 詳細 = await 呼ぶ(
   `施設情報（${一番.hotelName}）`,
-  `https://openapi.rakuten.co.jp/travelms/api/Travel/HotelDetailSearch/20260731?${共通}`
+  `https://openapi.rakuten.co.jp/engine/api/Travel/HotelDetailSearch/20260731?${共通}`
   + `&hotelNo=${一番.hotelNo}`
 );
 if (!詳細) process.exit(0);
