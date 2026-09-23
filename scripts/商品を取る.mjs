@@ -386,6 +386,12 @@ if (入れるもの.length) {
 const 出す = [...URLで引く.values()];
 if (書かない) {
   console.log(`DRY_RUN なので書きません（書けば ${出す.length} 件になります）。`);
+} else if (出す.length === 0 && 既存.length > 0) {
+  // ここに来るのは、読めていた既存が途中で全部消えたとき。
+  // 空で上書きすると商品枠が止まるので、書かずに落とす（2026-09-23）。
+  console.error(`::error::書き出しが 0 件になりました（既存は ${既存.length} 件）。`
+    + 'これまでのリストを消さないため、今回は書き込みません。');
+  process.exit(1);
 } else {
   writeFileSync(商品パス, 出す.map((x) => JSON.stringify(x)).join('\n') + '\n', 'utf8');
   console.log(`${商品パス} は ${出す.length} 件になりました。`);

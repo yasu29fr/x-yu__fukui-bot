@@ -118,6 +118,23 @@ const 出 = 候補.sort((a, b) => 点(b) - 点(a)).slice(0, 上限).map((x) => (
 console.log('\n--- 入れるもの ---');
 for (const x of 出) console.log(`  ${x.自治体}／${x.寄付額.toLocaleString()}円／レビュー${x.レビュー数}　${x.名}`);
 
+// 集めそこねた日に、前のリストを消してしまわないようにする。
+// このスクリプトは毎回ゼロから作り直すので、楽天が返さなかった日は 0 件になる。
+// 「集まらなかった」と「返礼品が無い」は違う（2026-09-23、宿で同じ穴を踏んだ）。
+if (出.length === 0) {
+  console.error('::error::1件も集まりませんでした。'
+    + 'これまでのリストを消さないため、今回は書き込みません。');
+  process.exit(1);
+}
+if (existsSync(置き場)) {
+  const 前の数 = readFileSync(置き場, 'utf8').split('\n').filter((l) => l.trim()).length;
+  if (前の数 >= 5 && 出.length < 前の数 / 2) {
+    console.error(`::error::今回 ${出.length}件。前回は ${前の数}件でした。`
+      + '半分以下に減ったので、取りこぼしとみなして書き込みません。');
+    process.exit(1);
+  }
+}
+
 if (書かない) { console.log('\nDRY_RUN なので書きません。'); process.exit(0); }
 mkdirSync('neta', { recursive: true });
 writeFileSync(置き場, 出.map((x) => JSON.stringify(x)).join('\n') + '\n', 'utf8');
