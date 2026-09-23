@@ -5,7 +5,7 @@ name: 宿を調べる
 on:
   workflow_dispatch:
     inputs:
-      宿:
+      hotels:
         description: "宿の名前（複数はカンマ区切り）"
         required: true
         default: "グランディア芳泉,コートヤード福井"
@@ -29,11 +29,12 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
-          宿: ${{ inputs.宿 || github.event.client_payload.宿 || 'グランディア芳泉,コートヤード福井' }}
+          # 環境変数の名前は英数字に限られる（日本語にするとワークフローが起動時に落ちる）
+          HOTELS: ${{ inputs.hotels || github.event.client_payload.hotels || 'グランディア芳泉,コートヤード福井' }}
         run: |
           set -o pipefail
-          IFS=',' read -ra なまえ <<< "$宿"
-          node "scripts/宿を調べる.mjs" "${なまえ[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          IFS=',' read -ra NAMES <<< "$HOTELS"
+          node "scripts/宿を調べる.mjs" "${NAMES[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: 結果を残す
         run: |
