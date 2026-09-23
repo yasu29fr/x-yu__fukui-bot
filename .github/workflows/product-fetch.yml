@@ -1,8 +1,10 @@
 name: 紹介する商品を足す
 
 # neta/設定.json の「商品の探しかた」にあるキーワードで楽天市場を検索し、
-# アフィリエイトリンク付きの商品を neta/ネタ帳.md の
-# 「## 紹介する商品」の末尾に追記してコミットする。
+# neta/商品.jsonl を在庫の上限まで補充する。すでにある商品は
+# 価格・レビュー・セールの有無を取り直して更新する。
+#
+# このリストは X と yu の両方が読む（yu は https で読む）。
 #
 # 投稿文は書かない。書くのは compose.py の仕事。
 # ここで入る商品のメモには [未使用] が付くので、
@@ -56,7 +58,7 @@ jobs:
         if: ${{ steps.fetch.outputs.added != '0' && !inputs.dry_run }}
         run: |
           set -euo pipefail
-          TARGET="neta/ネタ帳.md"
+          TARGET="neta/商品.jsonl"
           if git diff --quiet -- "${TARGET}"; then
             echo "${TARGET} に変更なし。コミットはしません。"
             exit 0
@@ -64,7 +66,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "${TARGET}"
-          git commit -m "chore(neta): 紹介する商品を補充（$(TZ=Asia/Tokyo date +%F)）"
+          git commit -m "chore(商品): リストを補充・更新（$(TZ=Asia/Tokyo date +%F)）"
           for attempt in 1 2 3 4; do
             if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then
               exit 0

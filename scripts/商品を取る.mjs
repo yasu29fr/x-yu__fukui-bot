@@ -1,57 +1,52 @@
 /**
- * 楽天ウェブサービスで商品を探し、ネタ帳の「紹介する商品」に書き足す
+ * 楽天ウェブサービスで商品を探し、neta/商品.jsonl を育てる
  * ------------------------------------------------------------------
- * 何をするか:
- *   neta/設定.json の「商品の探しかた」にあるキーワードで楽天市場を検索し、
- *   アフィリエイトリンク付きの商品を neta/ネタ帳.md の
- *   「## 紹介する商品」に  - 商品名 | URL | 一言メモ  の形で追記する。
- *   投稿文は書かない。書くのは compose.py の仕事。
+ * このファイルは X のリポジトリにだけ置く。
+ * ここで作る neta/商品.jsonl が、X と yu の両方が読む「1つの商品リスト」。
+ * yu は https でこのファイルを読む（同じ商品を同じ日に出すため）。
  *
- * 動かし方:
- *   RAKUTEN_APP_ID=xxx RAKUTEN_ACCESS_KEY=xxx RAKUTEN_AFFILIATE_ID=xxx \
- *   node scripts/商品を取る.mjs
- *   DRY_RUN=1 でファイルを書かずに結果だけ出す。
+ * 1行1商品の JSON。中身:
+ *   名 / url / 価格 / レビュー数 / レビュー平均 / ポイント倍 / セール / 店 /
+ *   キーワード / 追加日 / 使ったことがある
  *
  * 決めていること:
- *   - affiliateId を渡して、返ってきた affiliateUrl をそのまま使う。
- *     リンクを自分で組み立てない（楽天が返すものが正）
- *   - メモの先頭に「[未使用]」を付ける。検索で見つけただけの商品なので、
- *     compose.py 側でこの印を見て「使った感想」を書かせないようにする
- *   - メモに「使っている」と書かない。事実（レビュー数・価格）だけを書く
- *   - すでにネタ帳にある商品URLは入れない
- *   - 1秒に1回までにする（楽天は短時間の連続アクセスで応答しなくなる）
+ *   - affiliateId を渡して、返ってきた affiliateUrl をそのまま使う
+ *     （リンクを自分で組み立てない。楽天が返すものが正）
+ *   - 同じ商品は上書きして更新する。価格・レビュー・ポイント倍は動くので、
+ *     毎回取り直したほうが「いまセール中か」が正しくなる
+ *   - 「使ったことがある」は既定で false。実際に買って使ったら手で true にする。
+ *     false のあいだ、compose.py は「使った感想」を書かせない
+ *   - 在庫の上限まで。上限に達していたら、更新だけして新しいものは足さない
+ *   - 1秒に1回まで（楽天は短時間の連続アクセスで応答しなくなる）
  *
- * 依存なし（Node 20 以上の fetch をそのまま使う）。
+ * 動かし方:
+ *   RAKUTEN_APP_ID=… RAKUTEN_ACCESS_KEY=… RAKUTEN_AFFILIATE_ID=… \
+ *   RAKUTEN_REFERER=https://… node scripts/商品を取る.mjs
+ *   DRY_RUN=1 でファイルを書かずに結果だけ出す。
  * ------------------------------------------------------------------
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const 設定パス = 'neta/設定.json';
-const ネタ帳パス = 'neta/ネタ帳.md';
-const 商品見出し = '## 紹介する商品';
+const 商品パス = 'neta/商品.jsonl';
 const エンドポイント = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 
 const アプリID = process.env.RAKUTEN_APP_ID;
 const アクセスキー = process.env.RAKUTEN_ACCESS_KEY;
 const アフィリエイトID = process.env.RAKUTEN_AFFILIATE_ID;
-const 書かない = process.env.DRY_RUN === '1';
-// アプリを「Webアプリケーション」で登録した場合、楽天は Referer と Origin を見る。
-// どちらか片方だと REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING で 403 になる。
-// GitHub Actions から呼ぶときはブラウザではないので、自分で付ける必要がある。
-// 「バックエンドサービス」で登録した場合は空のままでよい。
 const リファラー = (process.env.RAKUTEN_REFERER ?? '').trim();
-// 楽天は Referer と Origin の両方を見る。Origin はリファラーから作る。
+const 書かない = process.env.DRY_RUN === '1';
+
+// 楽天は Referer と Origin の両方を見る。片方だけだと
+// REQUEST_CONTEXT_BODY_HTTP_REFERRER_MISSING で 403 になる。
 const オリジン = (() => {
   if (!リファラー) return '';
-  try {
-    return new URL(リファラー).origin;
-  } catch {
-    console.log(`::warning::RAKUTEN_REFERER が URL の形になっていません（https:// から書いてください）`);
+  try { return new URL(リファラー).origin; } catch {
+    console.log('::warning::RAKUTEN_REFERER が URL の形になっていません');
     return '';
   }
 })();
-console.log(リファラー ? `リファラー: 設定あり（${リファラー.length}文字・オリジン ${オリジン ? 'あり' : 'なし'}）` : 'リファラー: 未設定');
 
 function 止まる(文) {
   console.error(`::error::${文}`);
@@ -69,14 +64,26 @@ if (!探しかた || !(探しかた['キーワード'] ?? []).length) {
   process.exit(0);
 }
 
-const ネタ帳 = existsSync(ネタ帳パス) ? readFileSync(ネタ帳パス, 'utf8') : '';
-const 既存URL = new Set([...ネタ帳.matchAll(/https?:\/\/[^\s|)）]+/g)].map((m) => m[0]));
-
-const 入れる件数 = 探しかた['1回に入れる件数'] ?? 3;
+const 在庫の上限 = 探しかた['在庫の上限'] ?? 10;
+const 一度に足す上限 = 探しかた['1回に入れる件数'] ?? 10;
 const 最低レビュー数 = 探しかた['最低レビュー数'] ?? 0;
 const 最低価格 = 探しかた['最低価格'] ?? null;
 const 最高価格 = 探しかた['最高価格'] ?? null;
 
+const 今 = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+
+// いまの商品リストを読む（無ければ空）
+const 既存 = existsSync(商品パス)
+  ? readFileSync(商品パス, 'utf8').split('\n').filter((s) => s.trim()).map((s) => {
+      try { return JSON.parse(s); } catch { return null; }
+    }).filter(Boolean)
+  : [];
+const URLで引く = new Map(既存.map((x) => [x.url, x]));
+
+console.log(`いまの商品リスト ${既存.length} 件（上限 ${在庫の上限}）`);
+console.log(リファラー ? `リファラー: 設定あり（オリジン ${オリジン ? 'あり' : 'なし'}）` : 'リファラー: 未設定');
+
+// 楽天に聞く
 const 候補 = [];
 for (const キーワード of 探しかた['キーワード']) {
   try {
@@ -84,52 +91,90 @@ for (const キーワード of 探しかた['キーワード']) {
     console.log(`「${キーワード}」… ${items.length}件`);
     候補.push(...items.map((x) => ({ ...x, キーワード })));
   } catch (e) {
-    console.log(`::warning::「${キーワード}」で取れませんでした: ${String(e.message ?? e).slice(0, 120)}`);
+    console.log(`::warning::「${キーワード}」で取れませんでした: ${String(e.message ?? e).slice(0, 200)}`);
   }
-  await new Promise((r) => setTimeout(r, 1100)); // 楽天は連続アクセスに弱い
+  await new Promise((r) => setTimeout(r, 1100));
 }
 
-// レビューが多い順。同じ商品は1つに。
+// すでにある商品は、価格とレビューとセールを更新する
+let 更新数 = 0;
+for (const x of 候補) {
+  const 古い = URLで引く.get(x.affiliateUrl);
+  if (!古い) continue;
+  const 新 = 商品にする(x, 古い.追加日);
+  新.使ったことがある = 古い.使ったことがある ?? false;
+  新.成績 = 古い.成績 ?? null;
+  if (JSON.stringify(古い) !== JSON.stringify(新)) 更新数 += 1;
+  URLで引く.set(x.affiliateUrl, 新);
+}
+
+// 足りない分だけ新しく入れる
+const 空き = Math.max(0, 在庫の上限 - URLで引く.size);
+const 足せる数 = Math.min(一度に足す上限, 空き);
+console.log(`更新 ${更新数} 件。空き ${空き} 件。今回足すのは最大 ${足せる数} 件。`);
+
 const 見た = new Set();
-const 並べた = 候補
+const 足すもの = 足せる数 === 0 ? [] : 候補
   .filter((x) => {
-    if (!x.affiliateUrl || 既存URL.has(x.affiliateUrl)) return false;
-    if (x.reviewCount < 最低レビュー数) return false;
+    if (!x.affiliateUrl || URLで引く.has(x.affiliateUrl)) return false;
+    if ((x.reviewCount ?? 0) < 最低レビュー数) return false;
     if (最低価格 && x.itemPrice < 最低価格) return false;
     if (最高価格 && x.itemPrice > 最高価格) return false;
     if (見た.has(x.itemCode)) return false;
     見た.add(x.itemCode);
     return true;
   })
-  .sort((a, b) => b.reviewCount - a.reviewCount)
-  .slice(0, 入れる件数);
+  .sort((a, b) => 並び順(b) - 並び順(a))
+  .slice(0, 足せる数)
+  .map((x) => 商品にする(x, 今));
 
-if (!並べた.length) {
-  console.log('入れられる商品がありませんでした。ファイルは変えません。');
-  出力('added', '0');
-  process.exit(0);
-}
+for (const x of 足すもの) URLで引く.set(x.url, x);
 
-const 行 = 並べた.map((x) => {
-  const 名 = 名前を整える(x.itemName);
-  // 「[未使用]」は compose.py が読む印。
-  // これが付いている商品は、本人がまだ使っていない＝使った感想を書かせない。
-  const メモ = `[未使用] 楽天の「${x.キーワード}」の検索結果から。${x.itemPrice.toLocaleString()}円・レビュー${x.reviewCount}件（${x.shopName}）`;
-  return `- ${名} | ${x.affiliateUrl} | ${メモ}`;
-});
-
-console.log('--- 入れるもの ---');
-for (const l of 行) console.log(l);
-
-if (書かない) {
-  console.log('DRY_RUN なので書きません。');
+if (足すもの.length) {
+  console.log('--- 足すもの ---');
+  for (const x of 足すもの) {
+    console.log(`+ ${x.名} ／ ${x.価格.toLocaleString()}円・レビュー${x.レビュー数}件${x.セール ? '・セール中' : ''}`);
+  }
 } else {
-  writeFileSync(ネタ帳パス, 節の終わりに入れる(ネタ帳, 商品見出し, 行.join('\n')), 'utf8');
-  console.log(`${ネタ帳パス} に ${行.length}件を追記しました。`);
+  console.log('新しく足すものはありません。');
 }
-出力('added', String(行.length));
+
+const 出す = [...URLで引く.values()];
+if (書かない) {
+  console.log(`DRY_RUN なので書きません（書けば ${出す.length} 件になります）。`);
+} else {
+  writeFileSync(商品パス, 出す.map((x) => JSON.stringify(x)).join('\n') + '\n', 'utf8');
+  console.log(`${商品パス} は ${出す.length} 件になりました。`);
+}
+出力('added', String(足すもの.length + 更新数));
 
 // ------------------------------------------------------------------
+
+function 商品にする(x, 追加日) {
+  const ポイント倍 = Number(x.pointRate ?? 1) || 1;
+  // セールの見分け方は2つ。ポイントが増えているか、名前に値引きの言葉があるか。
+  const セール = ポイント倍 > 1 || /OFF|オフ|クーポン|セール|割引|%引/i.test(x.itemName ?? '');
+  return {
+    名: 名前を整える(x.itemName ?? ''),
+    url: x.affiliateUrl,
+    価格: x.itemPrice ?? 0,
+    レビュー数: x.reviewCount ?? 0,
+    レビュー平均: x.reviewAverage ?? 0,
+    ポイント倍,
+    セール,
+    店: (x.shopName ?? '').slice(0, 30),
+    キーワード: x.キーワード ?? '',
+    追加日: 追加日 ?? 今,
+    使ったことがある: false,
+    成績: null,
+  };
+}
+
+// 新しく足すときの優先順。レビューが多く、セール中のものを先に。
+function 並び順(x) {
+  const ポイント倍 = Number(x.pointRate ?? 1) || 1;
+  return (x.reviewCount ?? 0) * (ポイント倍 > 1 ? 1.5 : 1);
+}
 
 // 楽天の商品名は「【期間限定 P10倍】」「＼⭐8%OFFクーポン✨／」のような
 // 煽り文句が前に付く。そのまま投稿に出すと読めないので、ここで落とす。
@@ -158,45 +203,32 @@ async function 探す(キーワード) {
     hits: '10',
     sort: '-reviewCount',
     imageFlag: '1',
-    format: 'json'
+    format: 'json',
   });
   if (最低価格) q.set('minPrice', String(最低価格));
   if (最高価格) q.set('maxPrice', String(最高価格));
 
+  const ヘッダ = { accept: 'application/json' };
+  if (リファラー) ヘッダ.referer = リファラー;
+  if (オリジン) ヘッダ.origin = オリジン;
+
   let 最後;
   for (let 回 = 1; 回 <= 3; 回 += 1) {
-    const ヘッダ = { accept: 'application/json' };
-    if (リファラー) ヘッダ.referer = リファラー;
-    if (オリジン) ヘッダ.origin = オリジン;
     const res = await fetch(`${エンドポイント}?${q}`, { headers: ヘッダ });
     if (res.ok) {
       const data = await res.json();
       return (data.Items ?? []).map((w) => w.Item ?? w).filter(Boolean);
     }
-    最後 = `HTTP ${res.status} ${(await res.text()).slice(0, 160)}`;
+    最後 = `HTTP ${res.status} ${(await res.text()).replace(/\s+/g, ' ').slice(0, 300)}`;
     if (res.status === 429) await new Promise((r) => setTimeout(r, 2000 * 回));
     else break;
   }
   throw new Error(最後);
 }
 
-// 節のいちばん下に足す。
-// 見出しのすぐ下に入れると、節の説明文より上に商品が並んでしまう。
-// 下に足すと、古いものから順に紹介される（compose.py は未紹介の先頭を取る）。
-function 節の終わりに入れる(md, 見出し文字, 塊) {
-  const i = md.indexOf(見出し文字);
-  if (i === -1) return `${md.trimEnd()}\n\n${見出し文字}\n\n${塊}\n`;
-  const 次の見出し = md.slice(i + 見出し文字.length).search(/\n## /);
-  const 節の終わり = 次の見出し === -1 ? md.length : i + 見出し文字.length + 次の見出し;
-  const 前 = md.slice(0, 節の終わり).trimEnd();
-  return `${前}\n${塊}\n${md.slice(節の終わり)}`;
-}
-
 function 出力(key, value) {
   console.log(`${key}=${value}`);
   if (process.env.GITHUB_OUTPUT) {
-    try {
-      writeFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`, { flag: 'a' });
-    } catch {}
+    try { writeFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`, { flag: 'a' }); } catch {}
   }
 }
