@@ -88,7 +88,12 @@ def 重み(x: dict, 閲覧の目安: float) -> int:
 
 
 def 並び(products: list[dict]) -> list[dict]:
-    """重みのぶんだけ繰り返した並びを作る。重い商品ほど何度も現れる。"""
+    """重みのぶんだけ繰り返した並びを作る。重い商品ほど何度も現れる。
+
+    ただの繰り返しだと同じ商品が続いてしまうので、重みつきの総当たり
+    （nginx の smooth weighted round-robin と同じ考え方）で散らす。
+    重い商品は間隔が短くなるだけで、隣り合わない。
+    """
     if not products:
         return []
 
@@ -99,31 +104,64 @@ def 並び(products: list[dict]) -> list[dict]:
     ]
     閲覧の目安 = sorted(閲覧たち)[len(閲覧たち) // 2] if 閲覧たち else 0
 
-    重みつき = [(x, 重み(x, 閲覧の目安)) for x in products]
-    # 並びは毎回同じでなければならないので、url で確定させる
-    重みつき.sort(key=lambda t: (-t[1], t[0].get("追加日", ""), t[0].get("url", "")))
+    # 並びは毎回まったく同じでなければならない。url で順番を確定させる。
+    候補 = sorted(products, key=lambda x: x.get("url", ""))
+    重みたち = [重み(x, 閲覧の目安) for x in 候補]
+    合計 = sum(重みたち)
+    if 合計 <= 0:
+        return list(候補)
 
-    最大 = max(w for _, w in 重みつき)
+    持ち点 = [0] * len(候補)
     出: list[dict] = []
-    for 周 in range(最大):
-        # 周が進むほど、重い商品だけが残る
-        この周 = [x for x, w in 重みつき if w > 周]
-        if 周 % 2 == 1:
-            この周 = list(reversed(この周))  # 同じ並びが続かないように向きを変える
-        出.extend(この周)
+    for _ in range(合計):
+        for i, w in enumerate(重みたち):
+            持ち点[i] += w
+        # 同点のときは必ず若い番号を取る（毎回同じ並びにするため）
+        選 = max(range(len(候補)), key=lambda i: (持ち点[i], -i))
+        持ち点[選] -= 合計
+        出.append(候補[選])
 
-    # 同じ商品が 2 日続かないようにする（1 件しか無いときを除く）
-    if len({id(x) for x in 出}) > 1:
-        for i in range(len(出)):
-            j = (i + 1) % len(出)
-            if 出[i].get("url") == 出[j].get("url"):
-                k = next(
-                    (m for m in range(len(出))
-                     if 出[m].get("url") not in (出[i].get("url"), 出[(j + 1) % len(出)].get("url"))),
-                    None,
-                )
-                if k is not None:
-                    出[j], 出[k] = 出[k], 出[j]
+    return _隣をほどく(出)
+
+
+def _隣をほどく(出: list[dict]) -> list[dict]:
+    """同じ商品が 2 日続く箇所をなくす。並びは輪なので、最後と最初もつなげて見る。
+
+    重い商品が 1 つだけ飛び抜けているときは、どう並べても続いてしまう。
+    そういうときは、ほどけるところまでほどいて諦める（止めはしない）。
+    """
+    n = len(出)
+    if n < 3:
+        return 出
+
+    def url(i: int) -> str:
+        return 出[i % n].get("url", "")
+
+    for _ in range(n):
+        続く = [i for i in range(n) if url(i) == url(i + 1)]
+        if not 続く:
+            break
+        直った = False
+        for i in 続く:
+            a = (i + 1) % n
+            for j in range(n):
+                if j == a or j == i:
+                    continue
+                # j のものを a に持ってきても、a の両隣とかぶらないか
+                if url(j) == url(a - 1) or url(j) == url(a + 1):
+                    continue
+                # a のものを j に置いても、j の両隣とかぶらないか
+                if url(a) == url(j - 1) or url(a) == url(j + 1):
+                    continue
+                出[a], 出[j] = 出[j], 出[a]
+                直った = True
+                break
+            if 直った:
+                break
+        if not 直った:
+            break
+    return 出
+
     return 出
 
 
@@ -145,9 +183,11 @@ def 投稿用にする(x: dict) -> dict:
         かけら.append(f"レビュー{x['レビュー数']}件")
     if x.get("レビュー平均"):
         かけら.append(f"評価{x['レビュー平均']}")
-    if x.get("セール"):
-        倍 = x.get("ポイント倍") or 1
-        かけら.append(f"いまセール中（ポイント{倍}倍）" if 倍 > 1 else "いま値引き中")
+    倍 = x.get("ポイント倍") or 1
+    if 倍 > 1:
+        かけら.append(f"いまポイント{倍}倍")
+    if x.get("値下げ") and x.get("前の価格"):
+        かけら.append(f"先週は{int(x['前の価格']):,}円")
     if x.get("店"):
         かけら.append(f"{x['店']}")
 

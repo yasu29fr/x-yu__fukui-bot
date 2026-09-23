@@ -101,7 +101,7 @@ let 更新数 = 0;
 for (const x of 候補) {
   const 古い = URLで引く.get(x.affiliateUrl);
   if (!古い) continue;
-  const 新 = 商品にする(x, 古い.追加日);
+  const 新 = 商品にする(x, 古い.追加日, 古い);
   新.使ったことがある = 古い.使ったことがある ?? false;
   新.成績 = 古い.成績 ?? null;
   if (JSON.stringify(古い) !== JSON.stringify(新)) 更新数 += 1;
@@ -126,7 +126,7 @@ const 足すもの = 足せる数 === 0 ? [] : 候補
   })
   .sort((a, b) => 並び順(b) - 並び順(a))
   .slice(0, 足せる数)
-  .map((x) => 商品にする(x, 今));
+  .map((x) => 商品にする(x, 今, null));
 
 for (const x of 足すもの) URLで引く.set(x.url, x);
 
@@ -150,14 +150,21 @@ if (書かない) {
 
 // ------------------------------------------------------------------
 
-function 商品にする(x, 追加日) {
+function 商品にする(x, 追加日, 古い) {
   const ポイント倍 = Number(x.pointRate ?? 1) || 1;
-  // セールの見分け方は2つ。ポイントが増えているか、名前に値引きの言葉があるか。
-  const セール = ポイント倍 > 1 || /OFF|オフ|クーポン|セール|割引|%引/i.test(x.itemName ?? '');
+  const 価格 = x.itemPrice ?? 0;
+  // 「セール中」は投稿本文に書く事実になるので、確かめられるものだけを見る。
+  // 商品名に「OFF」「クーポン」と書いてあるかは当てにならない（常時書いてある店がある）。
+  // 見るのは2つだけ: 楽天が返すポイント倍率と、前回取ったときより安くなったか。
+  const 前の価格 = 古い?.価格 ?? null;
+  const 値下げ = Boolean(前の価格 && 価格 && 価格 < 前の価格);
+  const セール = ポイント倍 > 1 || 値下げ;
   return {
+    前の価格,
+    値下げ,
     名: 名前を整える(x.itemName ?? ''),
     url: x.affiliateUrl,
-    価格: x.itemPrice ?? 0,
+    価格,
     レビュー数: x.reviewCount ?? 0,
     レビュー平均: x.reviewAverage ?? 0,
     ポイント倍,
