@@ -56,11 +56,21 @@ const 共通 = `applicationId=${アプリID}&accessKey=${アクセスキー}`
   + (アフィリエイトID ? `&affiliateId=${アフィリエイトID}` : '')
   + '&format=json&formatVersion=2';
 
-const 一覧 = await 呼ぶ(
-  '施設検索（福井県）',
-  `https://openapi.rakuten.co.jp/engine/api/Travel/SimpleHotelSearch/20260731?${共通}`
-  + '&largeClassCode=japan&middleClassCode=fukui&hits=3'
-);
+// 区分コードは大・中・小の3つが要る。小区分の綴りが分からないので、
+// 緯度経度（福井駅）でも引けるようにして、通ったほうを使う。
+const 試す = [
+  ['区分コード（japan/fukui/fukui）', '&largeClassCode=japan&middleClassCode=fukui&smallClassCode=fukui&hits=3'],
+  ['緯度経度（福井駅から3km）', '&latitude=36.0617&longitude=136.2236&searchRadius=3&datumType=1&hits=3'],
+];
+let 一覧 = null;
+for (const [名, 条件] of 試す) {
+  一覧 = await 呼ぶ(
+    `施設検索 ${名}`,
+    `https://openapi.rakuten.co.jp/engine/api/Travel/SimpleHotelSearch/20260731?${共通}${条件}`
+  );
+  if (一覧) break;
+  await new Promise((r) => setTimeout(r, 1100));
+}
 
 if (!一覧) {
   console.log('\n施設検索が通りませんでした。');
