@@ -36,6 +36,10 @@ const アプリID = process.env.RAKUTEN_APP_ID;
 const アクセスキー = process.env.RAKUTEN_ACCESS_KEY;
 const アフィリエイトID = process.env.RAKUTEN_AFFILIATE_ID;
 const 書かない = process.env.DRY_RUN === '1';
+// アプリを「Webアプリケーション」で登録した場合、楽天はリファラーを見る。
+// GitHub Actions から呼ぶときはブラウザではないので、自分で付ける必要がある。
+// 「バックエンドサービス」で登録した場合は空のままでよい。
+const リファラー = (process.env.RAKUTEN_REFERER ?? '').trim();
 
 function 止まる(文) {
   console.error(`::error::${文}`);
@@ -131,7 +135,9 @@ async function 探す(キーワード) {
 
   let 最後;
   for (let 回 = 1; 回 <= 3; 回 += 1) {
-    const res = await fetch(`${エンドポイント}?${q}`, { headers: { accept: 'application/json' } });
+    const ヘッダ = { accept: 'application/json' };
+    if (リファラー) ヘッダ.referer = リファラー;
+    const res = await fetch(`${エンドポイント}?${q}`, { headers: ヘッダ });
     if (res.ok) {
       const data = await res.json();
       return (data.Items ?? []).map((w) => w.Item ?? w).filter(Boolean);
