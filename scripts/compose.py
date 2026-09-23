@@ -390,10 +390,12 @@ def build_prompt(board: str, neta: str, recent: str, target_date, needed, filled
         "",
         "## 同じネタ・同じ投稿の使い回し（2026-09-18 代表指示）",
         "",
-        "同じネタを何度使ってもかまいません。**連続させないことだけ守ってください。**",
+        "同じネタを何度使ってもかまいません。**同じ日に重ねないことだけ守ってください。**",
         "",
-        "- **同じ出来事（催し・店・記事）は、1 日に 2 本まで。**",
-        "  2 本出すときは枠を 4 時間以上あける（6:00 と 14:00 は可。8:00 と 10:00 は不可）",
+        "- **同じ出来事（催し・店・記事）は、1 日に 1 本まで（2026-09-23 代表指示）。**",
+        "  **同じかどうかは「出典元：」の URL で見ます。**",
+        "  同じ URL を 1 日に 2 本以上使わないこと。時間を空ければよい、ではありません",
+        "  （これまでの「1 日 2 本まで・4 時間以上あける」は廃止しました）",
         "- **2 日続けて同じ出来事を出さない。** 1 日あける",
         "  ただし **開催日まで 3 日以内の催しは、毎日 1 本まで出してよい**（直前の告知は効くため）",
         "- **同じ書き出し（1 行目）を同じ日に 2 回使わない。** 角度を変える",
@@ -585,6 +587,20 @@ def product_rules(product: dict) -> list[str]:
 URL_IN_TEXT = re.compile(r"https?://\S+")
 
 
+# 「出典元：」に書かれた URL を取り出す。
+# 同じ催しを 1 日に 2 本出していないかは、この URL で見る（2026-09-23 代表指示）。
+# 本文の言い回しは変えられても、出典は変えられないので、これがいちばん確かな鍵になる。
+SOURCE_URL = re.compile(r"出典元[：:]\s*(https?://\S+)")
+
+
+def source_urls(text: str, thread: list[str]) -> set[str]:
+    found = set()
+    for part in [text or "", *(thread or [])]:
+        for url in SOURCE_URL.findall(part):
+            found.add(url.rstrip("）)、。,. "))
+    return found
+
+
 def new_id(hour: int, existing: set[str]) -> str:
     stamp = datetime.now(JST).strftime("%Y%m%d")
     while True:
@@ -684,6 +700,15 @@ def main() -> None:
 
     by_hour = {int(p["hour"]): p for p in posts}
     new_lines = []
+    # その日すでにキューに入っている投稿の出典も数に入れる。
+    # YU さんの指示で入れたものは例外なので、note に「指示」と書いてあれば数えない。
+    出典の枠: dict[str, int] = {}
+    for h, e in filled.items():
+        if "指示" in str(e.get("note", "")):
+            continue
+        for u in source_urls(e.get("text", ""), e.get("thread") or []):
+            出典の枠[u] = h
+
     for hour, *_ in needed:
         post = by_hour.get(hour)
         if not post:
@@ -730,6 +755,19 @@ def main() -> None:
                     f"{hour}:00 に X の上限を超える要素があります"
                     f"（{length} / 280。日本語なら 140 字まで）。"
                 )
+        # 同じ催しを 1 日に 2 本出していないかを、ここで機械的に確かめる。
+        # 指示だけだと読み飛ばされる。
+        重なり = source_urls(text, thread) & set(出典の枠)
+        if 重なり:
+            どこ = "、".join(f"{h}:00" for h in sorted(出典の枠[u] for u in 重なり))
+            fail(
+                f"{hour}:00 が {どこ} と同じ出来事です"
+                f"（出典 {sorted(重なり)[0]}）。"
+                "同じ出来事は 1 日 1 本までです。別のネタを選んでください。"
+            )
+        for u in source_urls(text, thread):
+            出典の枠[u] = hour
+
         item = {
             "id": new_id(hour, existing_ids),
             "text": text,
