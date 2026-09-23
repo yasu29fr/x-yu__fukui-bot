@@ -140,11 +140,8 @@ for (const x of 手で入れた) {
     URLで引く.set(前.url, { ...前, 手で入れた: true, むき: x.むき ?? 前.むき ?? 'プロ' });
     continue;
   }
-  const 所 = 店とスラッグ(x.url);
   URLで引く.set(x.url, {
-    itemCode: null,           // 本物の itemCode は取り込み時に楽天から受け取る
-    店コード: 所 && 所.店,
-    スラッグ: 所 && 所.スラッグ,
+    itemCode: null,
     名: x.名 ?? '（名前未設定）',
     url: x.url,
     価格: x.価格 ?? 0,
@@ -202,31 +199,11 @@ for (const 古い of [...URLで引く.values()]) {
   // itemCode が分かっている商品だけを名指しで引く。
   // URL から itemCode を組み立てるのは無理（店の URL 名と商品番号は別物）。
   // itemCode が無い商品は、下の検索結果から拾って入れる。
-  // 手で選んだ商品は、最初は itemCode が分からない。
-  // 商品ページの URL に出てくる文字列（スラッグ）は itemCode とは別物なので、
-  // 店の商品を順に見て、URL が一致するものから本物の itemCode を受け取る。
-  if (!古い.itemCode && 古い.手で入れた && 古い.店コード && 古い.スラッグ) {
-    const 見つけた = await 店から探す(古い.店コード, 古い.スラッグ);
-    if (!見つけた) {
-      console.log(`::warning::「${古い.店コード}/${古い.スラッグ}」を店の一覧から見つけられませんでした。`
-        + `neta/商品_手動.jsonl の URL を確認してください。`);
-      URLで引く.set(古い.url, { ...古い, 売り切れ: true });
-      continue;
-    }
-    const 新 = 商品にする({ ...見つけた, キーワード: '手で選んだもの' }, 古い.追加日, null);
-    新.手で入れた = true;
-    新.むき = 古い.むき ?? 'プロ';
-    新.店コード = 古い.店コード;
-    新.スラッグ = 古い.スラッグ;
-    新.売り切れ = false;
-    新.使ったことがある = 古い.使ったことがある ?? false;
-    新.成績 = 古い.成績 ?? null;
-    URLで引く.delete(古い.url);
-    URLで引く.set(新.url, 新);
-    更新数 += 1;
-    console.log(`手で選んだ商品を取り込みました: ${新.名}（${新.価格.toLocaleString()}円）`);
-    continue;
-  }
+  // 手で選んだ商品は、そのまま使う。楽天への問い合わせはしない。
+  // 商品ページの URL から itemCode は作れず（itemCode はページの HTML にしか無い）、
+  // 店の一覧を総当たりしても当たらなかったため。
+  // 価格やレビューは入らないが、リンクと名前があれば紹介はできる。
+  if (古い.手で入れた) continue;
 
   const コード = 古い.itemCode;
   if (!コード) continue;
@@ -487,34 +464,6 @@ function 控えに残す(はずす) {
   }
 }
 
-/** 商品ページの URL から、店コードと URL 末尾の文字列を取り出す。 */
-function 店とスラッグ(url) {
-  const m = String(url ?? '').match(/item\.rakuten\.co\.jp\/([^/]+)\/([^/?#]+)/);
-  return m ? { 店: m[1], スラッグ: m[2] } : null;
-}
-
-/**
- * 店の商品を順に見て、商品ページの URL が一致するものを返す。
- * 楽天の itemCode は商品ページの URL からは作れないので、こうして受け取る。
- * 一度見つかれば itemCode が保存されるので、次からは 1 回の問い合わせで済む。
- */
-async function 店から探す(店コード, スラッグ) {
-  for (let ページ = 1; ページ <= 10; ページ += 1) {
-    let 出;
-    try {
-      出 = await 探す(null, null, null, { shopCode: 店コード, page: String(ページ) });
-    } catch (e) {
-      console.log(`::warning::店「${店コード}」を見られませんでした: ${String(e.message ?? e).slice(0, 120)}`);
-      return null;
-    }
-    await new Promise((r) => setTimeout(r, 1100));
-    if (!出.length) return null;
-    const 当たり = 出.find((x) => String(x.itemUrl ?? '').includes(`/${スラッグ}`));
-    if (当たり) return 当たり;
-  }
-  return null;
-}
-
 function 商品にする(x, 追加日, 古い) {
   const ポイント倍 = Number(x.pointRate ?? 1) || 1;
   const 価格 = x.itemPrice ?? 0;
@@ -567,7 +516,7 @@ function 名前を整える(生) {
   return (区切り > 10 ? 切る.slice(0, 区切り) : 切る).replace(/[\/／・,、\s]+$/, '').trim();
 }
 
-async function 探す(キーワード, itemCode, 帯, 足す条件) {
+async function 探す(キーワード, itemCode, 帯) {
   const q = new URLSearchParams({
     applicationId: アプリID,
     accessKey: アクセスキー,
@@ -575,11 +524,7 @@ async function 探す(キーワード, itemCode, 帯, 足す条件) {
     hits: '10',
     format: 'json',
   });
-  if (足す条件) {
-    // 店ごとの一覧を見るとき。キーワードも価格も付けない。
-    for (const [k, v] of Object.entries(足す条件)) q.set(k, v);
-    q.set('hits', '30');
-  } else if (itemCode) {
+  if (itemCode) {
     // 1 件を名指しで引く。売り切れ・削除の判定に使う。
     q.set('itemCode', itemCode);
   } else {

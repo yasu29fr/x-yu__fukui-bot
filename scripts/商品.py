@@ -96,6 +96,10 @@ def 並び(products: list[dict]) -> list[dict]:
     """
     # 売り切れの印が付いたものは選ばない（リンクが死んでいるため）
     products = [x for x in products if not x.get("売り切れ")]
+    # 名前が入っていないものも選ばない。
+    # 手で足した直後は名前が空のことがあり、その状態で【PR】を出すと
+    # 「（名前未設定）」を紹介することになるため。
+    products = [x for x in products if (x.get("名") or "").strip()]
     if not products:
         return []
 
@@ -193,10 +197,15 @@ def 投稿用にする(x: dict) -> dict:
     if x.get("店"):
         かけら.append(f"{x['店']}")
 
+    # 手で選んだ商品は、価格やレビューが入っていないことがある。
+    # その場合は本人のメモだけを渡す（無い数字をでっち上げない）。
+    if x.get("手で入れた") and not かけら:
+        かけら.append(x.get("メモ") or "本人が選んだもの")
+
     印 = "" if x.get("使ったことがある") else f"{未使用の印} "
     return {
         "name": x.get("名", ""),
         "url": x.get("url", ""),
-        "memo": f"{印}楽天の「{x.get('キーワード', '')}」から。" + "・".join(かけら),
+        "memo": f"{印}" + ("" if x.get("手で入れた") else f"楽天の「{x.get('キーワード', '')}」から。") + "・".join(かけら),
         "raw": x,
     }
