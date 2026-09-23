@@ -60,10 +60,31 @@ if (!existsSync(設定パス)) 止まる(`${設定パス} がありません`);
 
 const 設定 = JSON.parse(readFileSync(設定パス, 'utf8'));
 const 探しかた = 設定['商品の探しかた'];
-if (!探しかた || !(探しかた['キーワード'] ?? []).length) {
+if (!探しかた || !(初心者の言葉.length + プロの言葉.length)) {
   console.log('設定.json に「商品の探しかた」がありません。何もしません。');
   process.exit(0);
 }
+
+// キーワードは「初心者向け」と「プロ向け」に分ける。
+// 表向きの読者は SNS で発信している人なので、初心者向けを多めに入れる。
+// 昔の書き方（ただの配列）も通す。その場合は全部を初心者向けとして扱う。
+const 生キーワード = 探しかた['キーワード'] ?? [];
+const 初心者の言葉 = Array.isArray(生キーワード)
+  ? 生キーワード
+  : (生キーワード['初心者向け'] ?? []);
+const プロの言葉 = Array.isArray(生キーワード) ? [] : (生キーワード['プロ向け'] ?? []);
+const 初心者の割合 = 探しかた['初心者の割合'] ?? 0.75;
+const 価格帯 = {
+  初心者: 探しかた['初心者の価格帯'] ?? {},
+  プロ: 探しかた['プロの価格帯'] ?? {},
+};
+// キーワード → どちら向きか。商品は「どの言葉で見つけたか」を覚えているので、
+// あとからでも向きが分かる。
+const 向きの表 = new Map([
+  ...初心者の言葉.map((k) => [k, '初心者']),
+  ...プロの言葉.map((k) => [k, 'プロ']),
+]);
+const 向き = (x) => 向きの表.get(x.キーワード) ?? null;
 
 const 在庫の上限 = 探しかた['在庫の上限'] ?? 10;
 const 一度に足す上限 = 探しかた['1回に入れる件数'] ?? 10;
@@ -89,15 +110,17 @@ console.log(リファラー ? `リファラー: 設定あり（オリジン ${�
 
 // 楽天に聞く
 const 候補 = [];
-for (const キーワード of 探しかた['キーワード']) {
-  try {
-    const items = await 探す(キーワード);
-    console.log(`「${キーワード}」… ${items.length}件`);
-    候補.push(...items.map((x) => ({ ...x, キーワード })));
-  } catch (e) {
-    console.log(`::warning::「${キーワード}」で取れませんでした: ${String(e.message ?? e).slice(0, 200)}`);
+for (const [むき, 言葉たち] of [['初心者', 初心者の言葉], ['プロ', プロの言葉]]) {
+  for (const キーワード of 言葉たち) {
+    try {
+      const items = await 探す(キーワード, null, 価格帯[むき]);
+      console.log(`［${むき}］「${キーワード}」… ${items.length}件`);
+      候補.push(...items.map((x) => ({ ...x, キーワード, むき })));
+    } catch (e) {
+      console.log(`::warning::「${キーワード}」で取れませんでした: ${String(e.message ?? e).slice(0, 200)}`);
+    }
+    await new Promise((r) => setTimeout(r, 1100));
   }
-  await new Promise((r) => setTimeout(r, 1100));
 }
 
 // すでにある商品を1件ずつ引き直す。検索結果に出てくるかどうかではなく、
@@ -172,25 +195,47 @@ const 足せる数 = Math.min(一度に足す上限, 空き);
 console.log(`空き ${空き} 件。今回足すのは最大 ${足せる数} 件。`);
 
 const 見た = new Set();
-const 足すもの = 足せる数 === 0 ? [] : 候補
+const 通ったもの = 候補
   .filter((x) => {
     if (!x.affiliateUrl || URLで引く.has(x.affiliateUrl)) return false;
     if ((x.reviewCount ?? 0) < 最低レビュー数) return false;
-    if (最低価格 && x.itemPrice < 最低価格) return false;
-    if (最高価格 && x.itemPrice > 最高価格) return false;
     if (見た.has(x.itemCode)) return false;
     見た.add(x.itemCode);
     return true;
   })
-  .sort((a, b) => 並び順(b) - 並び順(a))
-  .slice(0, 足せる数)
-  .map((x) => 商品にする(x, 今, null));
+  .sort((a, b) => 並び順(b) - 並び順(a));
 
-for (const x of 足すもの) URLで引く.set(x.url, x);
+// 初心者向けとプロ向けの取り合わせを、決めた割合に近づける。
+// いま残っている商品の内訳を見て、足りないほうから埋める。
+const 残り = [...URLで引く.values()];
+const いまの初心者 = 残り.filter((x) => 向き(x) === '初心者').length;
+const 仕上がり = Math.min(在庫の上限, 残り.length + 足せる数);
+const 初心者の目標 = Math.round(仕上がり * 初心者の割合);
+let 初心者を入れる = Math.max(0, Math.min(足せる数, 初心者の目標 - いまの初心者));
+let プロを入れる = 足せる数 - 初心者を入れる;
 
-if (足すもの.length) {
+const 足すもの = [];
+for (const x of 通ったもの) {
+  if (足すもの.length >= 足せる数) break;
+  if (x.むき === '初心者' && 初心者を入れる > 0) { 足すもの.push(x); 初心者を入れる -= 1; continue; }
+  if (x.むき === 'プロ' && プロを入れる > 0) { 足すもの.push(x); プロを入れる -= 1; continue; }
+}
+// 片方が尽きたら、残りは向きを問わず埋める（枠を空けたままにしない）
+for (const x of 通ったもの) {
+  if (足すもの.length >= 足せる数) break;
+  if (!足すもの.includes(x)) 足すもの.push(x);
+}
+const 入れるもの = 足すもの.map((x) => 商品にする(x, 今, null));
+console.log(
+  `いまの内訳: 初心者 ${いまの初心者} / ${残り.length} 件。` +
+  `仕上がり ${仕上がり} 件なら初心者は ${初心者の目標} 件が目標。`
+);
+
+for (const x of 入れるもの) URLで引く.set(x.url, x);
+
+if (入れるもの.length) {
   console.log('--- 足すもの ---');
-  for (const x of 足すもの) {
+  for (const x of 入れるもの) {
     console.log(`+ ${x.名} ／ ${x.価格.toLocaleString()}円・レビュー${x.レビュー数}件${x.セール ? '・セール中' : ''}`);
   }
 } else {
@@ -204,7 +249,7 @@ if (書かない) {
   writeFileSync(商品パス, 出す.map((x) => JSON.stringify(x)).join('\n') + '\n', 'utf8');
   console.log(`${商品パス} は ${出す.length} 件になりました。`);
 }
-出力('added', String(足すもの.length + 更新数));
+出力('added', String(入れるもの.length + 更新数));
 
 // ------------------------------------------------------------------
 
@@ -246,6 +291,13 @@ function 選び出す(消えた) {
       足す(x, `${g.本数}本出して平均閲覧${g.平均閲覧}（全体の中央値${中央}の6割未満）`);
     }
   }
+  // 探すのをやめたキーワードで入った商品。方針を変えたときに、
+  // 古い方針のものが残り続けないようにする。
+  for (const x of 全部) {
+    if (向きの表.has(x.キーワード)) continue;
+    足す(x, `「${x.キーワード}」はもう探していない`);
+  }
+
   for (const x of 全部) {
     const 日数 = 経過日数(x.追加日);
     if (日数 < 何日で古い) continue;
@@ -327,7 +379,7 @@ function 名前を整える(生) {
   return (区切り > 10 ? 切る.slice(0, 区切り) : 切る).replace(/[\/／・,、\s]+$/, '').trim();
 }
 
-async function 探す(キーワード, itemCode) {
+async function 探す(キーワード, itemCode, 帯) {
   const q = new URLSearchParams({
     applicationId: アプリID,
     accessKey: アクセスキー,
@@ -342,8 +394,10 @@ async function 探す(キーワード, itemCode) {
     q.set('keyword', キーワード);
     q.set('sort', '-reviewCount');
     q.set('imageFlag', '1');
-    if (最低価格) q.set('minPrice', String(最低価格));
-    if (最高価格) q.set('maxPrice', String(最高価格));
+    const 下 = (帯 && 帯['最低価格']) ?? 最低価格;
+    const 上 = (帯 && 帯['最高価格']) ?? 最高価格;
+    if (下) q.set('minPrice', String(下));
+    if (上) q.set('maxPrice', String(上));
   }
 
   const ヘッダ = { accept: 'application/json' };
