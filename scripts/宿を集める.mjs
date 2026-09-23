@@ -65,11 +65,21 @@ const 地点 = 宿の設定['エリア'] ?? [
   { 名: '小浜・若狭', 緯度: 35.4956, 経度: 135.7470, 半径: 3 },
 ];
 
+// 楽天の searchRadius は 0.1〜3.0km しか受け付けない。
+// 4以上を入れると全部の地点でエラーになり、宿が1軒も取れない（2026-09-23 に踏んだ）。
+// 設定に大きい値が書かれていても、ここで 3 に丸める。
+const 半径を丸める = (x) => {
+  const v = Number(x);
+  if (!Number.isFinite(v) || v <= 0) return 3;
+  if (v > 3) { console.log(`::warning::半径 ${v}km は楽天の上限(3km)を超えるので 3km にしました`); return 3; }
+  return Math.round(v * 10) / 10;
+};
+
 const みな = new Map();
 for (const p of 地点) {
   try {
     const r = await 呼ぶ(`${元}/SimpleHotelSearch/20260731?${鍵}`
-      + `&latitude=${p.緯度}&longitude=${p.経度}&searchRadius=${p.半径}&datumType=1&hits=30`);
+      + `&latitude=${p.緯度}&longitude=${p.経度}&searchRadius=${半径を丸める(p.半径)}&datumType=1&hits=30`);
     let n = 0;
     for (const h of (r.hotels ?? [])) {
       const b = 束(h).hotelBasicInfo;
@@ -157,6 +167,25 @@ for (const m of 手で選んだ) {
     });
     console.log(`  ★ ${bb.hotelName}（手で選んだ宿）`);
   } catch (e) { console.log(`::warning::手で選んだ宿 ${m.番号}: ${e.message}`); }
+}
+
+// 集めそこねた日に、前のリストを消してしまわないようにする。
+// 2026-09-23、半径の指定ミスで全地点が失敗し、12軒が2軒になった。
+// 「集まらなかった」と「宿が無い」は違う。集まらなかったら何も書かない。
+const 自動で取れた = 出.filter((x) => !x.手で選んだ).length;
+if (自動で取れた === 0) {
+  console.error('::error::自動で取れた宿が 0 軒でした。'
+    + 'これまでのリストを消さないため、今回は書き込みません。'
+    + '（楽天の searchRadius は 0.1〜3.0km。設定の半径を確かめてください）');
+  process.exit(1);
+}
+if (existsSync(宿パス)) {
+  const 前の数 = readFileSync(宿パス, 'utf8').split('\n').filter((l) => l.trim()).length;
+  if (前の数 >= 5 && 出.length < 前の数 / 2) {
+    console.error(`::error::今回 ${出.length}軒。前回は ${前の数}軒でした。`
+      + '半分以下に減ったので、取りこぼしとみなして書き込みません。');
+    process.exit(1);
+  }
 }
 
 if (書かない) { console.log('\nDRY_RUN なので書きません。'); process.exit(0); }
