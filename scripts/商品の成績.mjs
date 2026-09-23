@@ -36,6 +36,20 @@ if (!existsSync(商品パス)) {
 const 商品 = readFileSync(商品パス, 'utf8').split('\n').filter((s) => s.trim())
   .map((s) => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
 
+// 突き合わせの鍵。アフィリエイトのリンクは、アフィリエイトIDや
+// 楽天側の都合で文字列が変わることがある。変わっても切れないように、
+// リンクの中に入っている「商品ページの URL」で照合する。
+function 鍵(url) {
+  const s = String(url ?? '');
+  const m = s.match(/[?&]pc=([^&]+)/);
+  if (m) {
+    try {
+      return decodeURIComponent(m[1]).replace(/[?#].*$/, '').replace(/\/$/, '');
+    } catch { /* そのまま下へ */ }
+  }
+  return s.replace(/[?#].*$/, '').replace(/\/$/, '');
+}
+
 // url -> { 閲覧の合計, 反応の合計, 本数, 最終投稿日 }
 const 集計 = new Map();
 
@@ -48,7 +62,7 @@ function 足す(queueText, metricsText, どこ) {
     if (!e.id) continue;
     const 出 = new Set();
     for (const 文 of [e.text ?? '', ...(e.thread ?? [])]) {
-      for (const m of String(文).matchAll(/https?:\/\/\S+/g)) 出.add(m[0]);
+      for (const m of String(文).matchAll(/https?:\/\/\S+/g)) 出.add(鍵(m[0]));
     }
     if (出.size) URLたち.set(String(e.id), { urls: [...出], 日: String(e.scheduled_at ?? '').slice(0, 10) });
   }
@@ -88,7 +102,7 @@ for (const y of よそ) {
 
 let ついた = 0;
 for (const x of 商品) {
-  const a = 集計.get(x.url);
+  const a = 集計.get(鍵(x.url));
   if (!a || !a.本数) { x.成績 = x.成績 ?? null; continue; }
   x.成績 = {
     本数: a.本数,
