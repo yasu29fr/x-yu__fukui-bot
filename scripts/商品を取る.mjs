@@ -83,6 +83,14 @@ const 向きの表 = new Map([
 ]);
 const 向き = (x) => 向きの表.get(x.キーワード) ?? null;
 
+// 「DJI Mic」「Ulanzi 三脚」のように、決まったブランドを狙った言葉かどうか。
+// 設定の「ブランド名」に挙げた語が含まれていれば、その語を返す。
+const ブランドたち = (探しかた['ブランド名'] ?? []).map((b) => String(b).toLowerCase());
+function ブランド名(キーワード) {
+  const k = String(キーワード).toLowerCase();
+  return ブランドたち.find((b) => k.includes(b)) ?? null;
+}
+
 if (!探しかた || !(初心者の言葉.length + プロの言葉.length)) {
   console.log('設定.json に「商品の探しかた」がありません。何もしません。');
   process.exit(0);
@@ -100,6 +108,12 @@ const 最高価格 = 探しかた['最高価格'] ?? null;
 const 今 = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
 // いまの商品リストを読む（無ければ空）
+const 手で入れた = existsSync(手動の置き場)
+  ? readFileSync(手動の置き場, 'utf8').split('\n').filter((l) => l.trim()).map((l) => {
+      try { return JSON.parse(l); } catch { return null; }
+    }).filter((x) => x && x.url)
+  : [];
+
 const 既存 = existsSync(商品パス)
   ? readFileSync(商品パス, 'utf8').split('\n').filter((s) => s.trim()).map((s) => {
       try { return JSON.parse(s); } catch { return null; }
@@ -107,7 +121,39 @@ const 既存 = existsSync(商品パス)
   : [];
 const URLで引く = new Map(既存.map((x) => [x.url, x]));
 
-console.log(`いまの商品リスト ${既存.length} 件（上限 ${在庫の上限}）`);
+// 手で入れた商品を、リストに無ければ足す。あれば印だけ付け直す。
+let 手動を足した = 0;
+for (const x of 手で入れた) {
+  const 前 = URLで引く.get(x.url);
+  if (前) {
+    URLで引く.set(x.url, { ...前, 手で入れた: true, むき: x.むき ?? 前.むき ?? 'プロ' });
+    continue;
+  }
+  URLで引く.set(x.url, {
+    itemCode: x.itemCode ?? null,
+    名: x.名 ?? '（名前未設定）',
+    url: x.url,
+    価格: x.価格 ?? 0,
+    前の価格: null,
+    値下げ: false,
+    レビュー数: x.レビュー数 ?? 0,
+    レビュー平均: x.レビュー平均 ?? 0,
+    ポイント倍: 1,
+    セール: false,
+    店: x.店 ?? '',
+    キーワード: x.キーワード ?? '手で選んだもの',
+    追加日: x.追加日 ?? 今,
+    使ったことがある: x.使ったことがある ?? false,
+    成績: null,
+    手で入れた: true,
+  });
+  手動を足した += 1;
+}
+if (手で入れた.length) {
+  console.log(`手で入れた商品 ${手で入れた.length} 件（うち新しく入ったのは ${手動を足した} 件）`);
+}
+
+console.log(`いまの商品リスト ${URLで引く.size} 件（上限 ${在庫の上限}）`);
 console.log(リファラー ? `リファラー: 設定あり（オリジン ${オリジン ? 'あり' : 'なし'}）` : 'リファラー: 未設定');
 
 // 楽天に聞く
@@ -116,8 +162,15 @@ for (const [むき, 言葉たち] of [['初心者', 初心者の言葉], ['プ�
   for (const キーワード of 言葉たち) {
     try {
       const items = await 探す(キーワード, null, 価格帯[むき]);
-      console.log(`［${むき}］「${キーワード}」… ${items.length}件`);
-      候補.push(...items.map((x) => ({ ...x, キーワード, むき })));
+      // 楽天の検索は語をバラして当てるので、「DJI Mic」で Lexar の SD カードが
+      // 返ってくることがある。ブランド名を指定した言葉では、商品名に
+      // そのブランド名が入っているものだけを通す。
+      const 通す = ブランド名(キーワード)
+        ? items.filter((x) => (x.itemName ?? '').toLowerCase().includes(ブランド名(キーワード)))
+        : items;
+      const 落ちた = items.length - 通す.length;
+      console.log(`［${むき}］「${キーワード}」… ${通す.length}件${落ちた ? `（ブランド名が入っていない ${落ちた} 件は捨てた）` : ''}`);
+      候補.push(...通す.map((x) => ({ ...x, キーワード, むき })));
     } catch (e) {
       console.log(`::warning::「${キーワード}」で取れませんでした: ${String(e.message ?? e).slice(0, 200)}`);
     }
@@ -290,7 +343,7 @@ function 選び出す(消えた) {
 
   const 上限つき = [];
   const 足す = (x, 理由) => {
-    if (x.使ったことがある || 入った.has(x.url)) return;
+    if (x.使ったことがある || x.手で入れた || 入った.has(x.url)) return;
     上限つき.push({ ...x, はずす理由: 理由 });
     入った.add(x.url);
   };
@@ -337,7 +390,7 @@ function 選び出す(消えた) {
       return (b.レビュー数 ?? 0) - (a.レビュー数 ?? 0);
     });
     for (const x of 並べた.slice(言葉ごとの上限)) {
-      if (x.使ったことがある) continue;
+      if (x.使ったことがある || x.手で入れた) continue;
       決まり.push({ ...x, はずす理由: `「${ことば}」から${たち.length}件も入っていた` });
     }
   }
@@ -358,7 +411,7 @@ function 選び出す(消えた) {
 
 // 数が小さいほど先に落とす。
 function 落とす順(x) {
-  if (x.使ったことがある) return 100;                 // 本人の持ち物は最後まで残す
+  if (x.使ったことがある || x.手で入れた) return 100;  // 本人の持ち物・手で選んだものは残す
   if (!向きの表.has(x.キーワード)) return 0;          // もう探していない言葉
   if (!x.成績) return 1;                              // まだ一度も出していない
   return 2 + (x.成績.平均閲覧 ?? 0) / 100000;         // 成績がよいほど後ろ
