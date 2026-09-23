@@ -1,0 +1,55 @@
+name: ふるさと納税の返礼品を集める
+
+# 福井県の返礼品を集めて neta/ふるさと納税.jsonl を作る。投稿はしない。
+# 毎週月曜 9:30 JST（= 日曜 0:30 UTC）。需要は秋から冬に伸びる。
+on:
+  repository_dispatch:
+    types: [furusato-collect]
+  schedule:
+    - cron: "30 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "ファイルに書かず、集まった返礼品を表示するだけ"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: furusato-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: 楽天から集める
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: |
+          set -o pipefail
+          node "scripts/ふるさと納税を取る.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: コミットする
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "neta/ふるさと納税.jsonl" neta/設定.json
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -m "chore(ふるさと納税): リストを更新（$(TZ=Asia/Tokyo date +%F)）"
+          for i in 1 2 3 4; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then exit 0; fi
+            sleep $((2 ** i))
+          done
+          exit 1
