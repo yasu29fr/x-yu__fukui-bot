@@ -8,6 +8,22 @@
  * 何も書かない。読むだけ。
  * ------------------------------------------------------------------
  */
+import { writeFileSync, mkdirSync } from 'node:fs';
+
+// 実行ログはこちらから読めないので、結果をファイルにも残す
+const 記録 = [];
+const もとのlog = console.log;
+console.log = (...a) => { 記録.push(a.join(' ')); もとのlog(...a); };
+process.on('exit', () => {
+  try {
+    mkdirSync('docs', { recursive: true });
+    writeFileSync('docs/旅行API_調査.md',
+      '# 楽天トラベルAPIで何が取れるか（自動生成）\n\n'
+      + `調べた日時: ${new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ')} JST\n\n`
+      + '```\n' + 記録.join('\n') + '\n```\n', 'utf8');
+  } catch {}
+});
+
 const アプリID = process.env.RAKUTEN_APP_ID;
 const アクセスキー = process.env.RAKUTEN_ACCESS_KEY;
 const アフィリエイトID = process.env.RAKUTEN_AFFILIATE_ID;
