@@ -145,7 +145,10 @@ const 手で選んだ = existsSync(手動パス)
   : [];
 for (const m of 手で選んだ) {
   if (出.some((x) => x.番号 === m.番号)) {
-    出.find((x) => x.番号 === m.番号).手で選んだ = true;
+    const あ = 出.find((x) => x.番号 === m.番号);
+    あ.手で選んだ = true;
+    if (m.種別) あ.種別 = m.種別;
+    if (m.メモ) あ.メモ = m.メモ;
     continue;
   }
   try {
@@ -164,6 +167,9 @@ for (const m of 手で選んだ) {
       評価の内訳: { 風呂: r.bathAverage, 朝食: r.breakfastAverage, 設備: r.equipmentAverage, 清潔感: r.cleanlinessAverage, 立地: r.locationAverage, 部屋: r.roomAverage, サービス: r.serviceAverage },
       調べた日: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10),
       手で選んだ: true,
+      // 一棟貸し・グランピングなど。設備の項目では分からないので手で書く。
+      種別: m.種別 ?? null,
+      メモ: m.メモ ?? null,
     });
     console.log(`  ★ ${bb.hotelName}（手で選んだ宿）`);
   } catch (e) { console.log(`::warning::手で選んだ宿 ${m.番号}: ${e.message}`); }
