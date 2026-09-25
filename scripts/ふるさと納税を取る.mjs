@@ -54,7 +54,7 @@ const 最低料率 = 決め['最低料率'] ?? 5.0;
 // 楽天アフィリエイトの一覧を代表が見て分かったものをここに書く。
 // この自治体の品は 1商品1,000円の上限が外れる。
 const 料率アップの自治体 = 決め['料率アップの自治体'] ?? {};
-const アップ自治体ごとに最大 = 決め['料率アップの自治体ごとに最大'] ?? 5;
+
 // 設定では「上限なし」を null で書く（JSONに Infinity が無いため）
 const 金額帯 = (決め['金額帯'] ?? [
   { 名: '1万円まで', 下: 0, 上: 10000 },
@@ -196,36 +196,59 @@ const 見込み = (x) => {
 // レビュー数で見るかぎり、実際に数が出るのは1万円前後（2026-09-25 実測）。
 const 売れ筋 = 決め['売れ筋の寄付額'] ?? { 下: 6000, 上: 15000, 重み: 1.6 };
 const 売れ筋か = (x) => (x.itemPrice ?? 0) >= (売れ筋.下 ?? 0) && (x.itemPrice ?? 0) <= (売れ筋.上 ?? 1e12);
-const 点 = (x) => (見込み(x) / 100) * 人気(x)
-  * (x.手で選んだ ? 1.5 : 1) * (売れ筋か(x) ? (売れ筋.重み ?? 1.6) : 1);
+// 並べ方は2つに分ける（2026-09-25 代表判断）。
+//   > 鯖江市の狙うのは2、3割で残りは鉄板商品で。
+//   > 売れ筋を大量に販売するほうが、商売の本質だと思います。
+//
+//   鉄板（大多数）… レビュー数が多く、売れ筋の寄付額のもの。
+//                    1件あたりの報酬は主役にしない。数が出ることを優先する
+//   料率アップ（2〜3割）… 鯖江市の10%の品。1件あたりが大きいぶんを乗せる
+const 鉄板の点 = (x) => 人気(x)
+  * (売れ筋か(x) ? (売れ筋.重み ?? 1.6) : 1)
+  * (1 + 見込み(x) / 2000)          // 報酬は効かせるが、主役にはしない
+  * (x.手で選んだ ? 1.5 : 1);
+const 点 = 鉄板の点;
+const アップの割合 = 決め['料率アップの割合'] ?? 0.25;
 
-// 自治体ごとに上位を取る（返礼品が偏らないように）
+const 手で = [...集まり.values()].filter((x) => x.手で選んだ);
+const アップ勢 = [...集まり.values()].filter((x) => !x.手で選んだ && x.料率アップ);
+const 鉄板勢 = [...集まり.values()].filter((x) => !x.手で選んだ && !x.料率アップ);
+
+// 鉄板は自治体ごとに上位を取る（返礼品が偏らないように）
 const 自治体ごと = new Map();
-for (const x of 集まり.values()) {
-  if (x.手で選んだ) continue; // 手で選んだものは必ず残す
+for (const x of 鉄板勢) {
   if (!自治体ごと.has(x.自治体)) 自治体ごと.set(x.自治体, []);
   自治体ごと.get(x.自治体).push(x);
 }
-const 候補 = [...集まり.values()].filter((x) => x.手で選んだ);
+const 鉄板の候補 = [];
 for (const [名, たち] of [...自治体ごと].sort((a, b) => a[0].localeCompare(b[0], 'ja'))) {
-  const 枠 = 料率アップの自治体[名] != null ? アップ自治体ごとに最大 : 自治体ごとに最大;
-  たち.sort((a, b) => 点(b) - 点(a));
-  候補.push(...たち.slice(0, 枠));
-  console.log(`  ${名}: ${たち.length}件 → 上位${Math.min(枠, たち.length)}件${料率アップの自治体[名] != null ? `（料率アップ ${料率アップの自治体[名]}%）` : ''}`);
+  たち.sort((a, b) => 鉄板の点(b) - 鉄板の点(a));
+  鉄板の候補.push(...たち.slice(0, 自治体ごとに最大));
+  console.log(`  ${名}: ${たち.length}件 → 上位${Math.min(自治体ごとに最大, たち.length)}件`);
 }
 
-// 金額帯ごとに枠を分ける。投稿の切り口が金額で分かれていて、
-// 料率だけで並べると1つの金額帯に寄って切り口が作れなくなる。
-const 帯の枠 = Math.ceil(上限 / 金額帯.length);
-const 選ぶ = [];
-const 入った = new Set();
+// 料率アップは全体の2〜3割まで
+const アップの枠 = Math.max(0, Math.round((上限 - 手で.length) * アップの割合));
+アップ勢.sort((a, b) => 鉄板の点(b) - 鉄板の点(a));
+const アップ採用 = アップ勢.slice(0, アップの枠);
+if (アップ勢.length) {
+  見せる(`料率アップ（${Object.keys(料率アップの自治体).join('・')}）… ${アップ勢.length}件から ${アップ採用.length}件（全体の${Math.round(アップの割合 * 100)}%まで）`);
+}
+
+const 選ぶ = [...手で, ...アップ採用];
+const 入った = new Set(選ぶ.map((x) => x.itemCode));
+
+// 鉄板は金額帯ごとに枠を分ける。切り口ごとに件数をそろえるため。
+const 鉄板の枠 = 上限 - 選ぶ.length;
+const 帯の枠 = Math.ceil(鉄板の枠 / 金額帯.length);
 for (const 帯 of 金額帯) {
-  const たち = 候補.filter((x) => !入った.has(x.itemCode) && (x.itemPrice ?? 0) >= 帯.下 && (x.itemPrice ?? 0) < 帯.上)
-    .sort((a, b) => 点(b) - 点(a)).slice(0, 帯の枠);
+  const たち = 鉄板の候補
+    .filter((x) => !入った.has(x.itemCode) && (x.itemPrice ?? 0) >= 帯.下 && (x.itemPrice ?? 0) < 帯.上)
+    .sort((a, b) => 鉄板の点(b) - 鉄板の点(a)).slice(0, 帯の枠);
   for (const x of たち) { 選ぶ.push(x); 入った.add(x.itemCode); }
   console.log(`  ${帯.名}: ${たち.length}件`);
 }
-for (const x of 候補.sort((a, b) => 点(b) - 点(a))) {
+for (const x of 鉄板の候補.sort((a, b) => 鉄板の点(b) - 鉄板の点(a))) {
   if (選ぶ.length >= 上限) break;
   if (入った.has(x.itemCode)) continue;
   選ぶ.push(x); 入った.add(x.itemCode);
@@ -243,7 +266,7 @@ function 名前を整える(生) {
 }
 
 const きょう = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-const 出 = 選ぶ.sort((a, b) => 点(b) - 点(a)).slice(0, 上限).map((x) => ({
+const 出 = 選ぶ.sort((a, b) => 鉄板の点(b) - 鉄板の点(a)).slice(0, 上限).map((x) => ({
   itemCode: x.itemCode, 名: 名前を整える(x.itemName), url: x.affiliateUrl,
   自治体: x.自治体, 寄付額: x.itemPrice, 料率: x.料率, 料率アップ: x.料率アップ === true,
   見込み報酬: 見込み(x), 手で選んだ: x.手で選んだ === true,
