@@ -39,7 +39,18 @@ for (const k of 言葉たち) {
     const ある = items.filter((x) => (x.reviewCount ?? 0) > 0);
     const 多い = items.filter((x) => (x.reviewCount ?? 0) >= 10);
     console.log(`::warning::【${k}】${最低料率 ? `料率${最低料率}%以上 ` : ''}${items.length}件（${並べ方}）／レビュー1件以上 ${ある.length}件、10件以上 ${多い.length}件`);
-    for (const x of items.slice(0, 8)) {
+    // 価格帯の分布。レビュー数で並べたときの上位が、どの寄付額に寄っているか。
+    const 帯 = [[0,5000,'5千円未満'],[5000,10000,'5千〜1万'],[10000,15000,'1万〜1.5万'],
+      [15000,20000,'1.5万〜2万'],[20000,30000,'2万〜3万'],[30000,50000,'3万〜5万'],[50000,1e12,'5万以上']];
+    const 数 = 帯.map(([下,上,名]) => {
+      const な = items.filter((x) => (x.itemPrice ?? 0) >= 下 && (x.itemPrice ?? 0) < 上);
+      const レ = な.reduce((a, x) => a + (x.reviewCount ?? 0), 0);
+      return `${名} ${な.length}件(レビュー計${レ.toLocaleString()})`;
+    });
+    console.log(`::warning::  寄付額の散らばり… ${数.join('／')}`);
+    const 価 = items.map((x) => x.itemPrice ?? 0).sort((a, b) => a - b);
+    if (価.length) console.log(`::warning::  中央 ${価[Math.floor(価.length/2)].toLocaleString()}円／最小 ${価[0].toLocaleString()}円／最大 ${価[価.length-1].toLocaleString()}円`);
+    for (const x of items.slice(0, 4)) {
       console.log(`::warning::  ${x.affiliateRate}% ／ ${(x.itemPrice ?? 0).toLocaleString()}円 ／ ★${x.reviewAverage ?? '-'}(${x.reviewCount ?? 0}件) ／ ${(x.shopName ?? '').slice(0, 12)} ／ ${(x.itemName ?? '').slice(0, 30)}`);
     }
   } catch (e) { console.log(`::warning::「${k}」で失敗: ${String(e.message ?? e).slice(0, 160)}`); }
