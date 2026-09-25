@@ -238,9 +238,32 @@ if (アップ勢.length) {
 const 選ぶ = [...手で, ...アップ採用];
 const 入った = new Set(選ぶ.map((x) => x.itemCode));
 
-// 鉄板は金額帯ごとに枠を分ける。切り口ごとに件数をそろえるため。
-const 鉄板の枠 = 上限 - 選ぶ.length;
-const 帯の枠 = Math.ceil(鉄板の枠 / 金額帯.length);
+// まず、集めた言葉ごとに1件ずつ入れる。
+// 投稿の切り口（越前がに／職人のもの／若狭牛…）は品の名前で振り分けるので、
+// 品ぞろえが偏ると切り口が作れなくなる（2026-09-25、7つのうち3つしか立たなかった）。
+// 点の高い順に埋めると、レビューの多い食べ物で埋まって工芸が消える。
+{
+  const 言葉ごと = new Map();
+  for (const x of 鉄板の候補) {
+    const k = x.キーワード ?? '';
+    if (!言葉ごと.has(k)) 言葉ごと.set(k, []);
+    言葉ごと.get(k).push(x);
+  }
+  let 入れた = 0;
+  for (const [k, たち] of 言葉ごと) {
+    if (選ぶ.length >= 上限) break;
+    たち.sort((a, b) => 鉄板の点(b) - 鉄板の点(a));
+    for (const x of たち.slice(0, 決め['言葉ごとにまず何件'] ?? 2)) {
+      if (選ぶ.length >= 上限 || 入った.has(x.itemCode)) continue;
+      選ぶ.push(x); 入った.add(x.itemCode); 入れた += 1;
+    }
+  }
+  見せる(`言葉ごとに先に ${入れた}件（${言葉ごと.size}通りの言葉から）`);
+}
+
+// 残りは金額帯ごとに枠を分ける。
+const 鉄板の枠 = Math.max(0, 上限 - 選ぶ.length);
+const 帯の枠 = Math.ceil(Math.max(1, 鉄板の枠) / 金額帯.length);
 for (const 帯 of 金額帯) {
   const たち = 鉄板の候補
     .filter((x) => !入った.has(x.itemCode) && (x.itemPrice ?? 0) >= 帯.下 && (x.itemPrice ?? 0) < 帯.上)
