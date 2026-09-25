@@ -109,6 +109,14 @@ const 料率を読む = (x) => {
   return Number.isFinite(v) && v > 0 ? v : null;
 };
 
+// 手で選んだ品（料率アップ対象など）。APIでは料率アップが分からないので、
+// 楽天アフィリエイトの一覧を料率順で見て見つけたものをここに書く。
+// 形: {"itemCode","名","url","自治体","寄付額","料率","料率アップ":true,"メモ"}
+const 手動の置き場 = 'neta/ふるさと納税_手動.jsonl';
+const 手動 = existsSync(手動の置き場)
+  ? readFileSync(手動の置き場, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l))
+  : [];
+
 const 集まり = new Map();
 function 入れる(x, k, 経路) {
   const 名 = x.itemName ?? '', 店 = x.shopName ?? '';
@@ -121,6 +129,17 @@ function 入れる(x, k, 経路) {
   集まり.set(x.itemCode, { ...x, 自治体, キーワード: k, 経路, 料率: 料率を読む(x) });
   return true;
 }
+
+for (const h of 手動) {
+  const コード = h.itemCode ?? h.url;
+  集まり.set(コード, {
+    itemCode: コード, itemName: h.名, affiliateUrl: h.url, shopName: h.店 ?? h.自治体,
+    itemPrice: h.寄付額, reviewCount: h.レビュー数 ?? 30, reviewAverage: h.レビュー平均 ?? 4.3,
+    自治体: h.自治体, キーワード: '手で選んだ', 経路: '手動', 料率: h.料率 ?? null,
+    料率アップ: h.料率アップ === true, 手で選んだ: true, メモ: h.メモ ?? '',
+  });
+}
+if (手動.length) 見せる(`手で選んだ品を ${手動.length}件 入れました`);
 
 for (const k of キーワード) {
   for (const 料率順 of (料率で絞れる ? [true, false] : [false])) {
@@ -144,20 +163,31 @@ if (料率あり.length === 0) {
   見せる(`料率が取れたのは ${料率あり.length}件。最高 ${並[0]}% ／ 中央 ${並[Math.floor(並.length / 2)]}% ／ 最低 ${並[並.length - 1]}%`);
 }
 
-// 点＝料率 × 人気。料率が取れないものは、その場の中央値とみなして不利にしすぎない。
+// 点＝見込み報酬 × 人気。
+// 上限の話: 楽天アフィリエイトは通常「1商品1個につき1,000円」までしか付かない。
+// 料率アップ対象の商品だけ、この上限が外れる。
+// APIが返す affiliateRate は通常料率で、料率アップぶんは入っていない
+// （2026-09-25 確認。福井のふるさと納税はAPIでは最高4%だが、
+//  アフィリエイトの一覧では10.0%の返礼品があった）。
+// なので、手で選んだ料率アップの品だけ上限を外す。
+const 上限報酬 = 決め['1件あたりの上限報酬'] ?? 1000;
 const 中央料率 = 料率あり.length
   ? 料率あり.map((x) => x.料率).sort((a, b) => a - b)[Math.floor(料率あり.length / 2)] : 3.0;
 const 人気 = (x) => Math.log10((x.reviewCount ?? 1) + 10) * ((x.reviewAverage ?? 3.5) / 5);
-const 点 = (x) => (x.料率 ?? 中央料率) * 人気(x);
-const 見込み = (x) => Math.round((x.itemPrice ?? 0) * ((x.料率 ?? 中央料率) / 100));
+const 見込み = (x) => {
+  const 生 = Math.round((x.itemPrice ?? 0) * ((x.料率 ?? 中央料率) / 100));
+  return x.料率アップ ? 生 : Math.min(生, 上限報酬);
+};
+const 点 = (x) => (見込み(x) / 100) * 人気(x) * (x.手で選んだ ? 1.5 : 1);
 
 // 自治体ごとに上位を取る（返礼品が偏らないように）
 const 自治体ごと = new Map();
 for (const x of 集まり.values()) {
+  if (x.手で選んだ) continue; // 手で選んだものは必ず残す
   if (!自治体ごと.has(x.自治体)) 自治体ごと.set(x.自治体, []);
   自治体ごと.get(x.自治体).push(x);
 }
-const 候補 = [];
+const 候補 = [...集まり.values()].filter((x) => x.手で選んだ);
 for (const [名, たち] of [...自治体ごと].sort((a, b) => a[0].localeCompare(b[0], 'ja'))) {
   たち.sort((a, b) => 点(b) - 点(a));
   候補.push(...たち.slice(0, 自治体ごとに最大));
@@ -195,7 +225,8 @@ function 名前を整える(生) {
 const きょう = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 const 出 = 選ぶ.sort((a, b) => 点(b) - 点(a)).slice(0, 上限).map((x) => ({
   itemCode: x.itemCode, 名: 名前を整える(x.itemName), url: x.affiliateUrl,
-  自治体: x.自治体, 寄付額: x.itemPrice, 料率: x.料率, 見込み報酬: 見込み(x),
+  自治体: x.自治体, 寄付額: x.itemPrice, 料率: x.料率, 料率アップ: x.料率アップ === true,
+  見込み報酬: 見込み(x), 手で選んだ: x.手で選んだ === true,
   レビュー数: x.reviewCount, レビュー平均: x.reviewAverage,
   店: (x.shopName ?? '').slice(0, 30), キーワード: x.キーワード, 追加日: きょう,
 }));
