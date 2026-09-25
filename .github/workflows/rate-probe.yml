@@ -1,0 +1,25 @@
+name: 料率を調べる
+
+# 楽天の商品検索APIが返す affiliateRate をそのまま見るためだけの下見。
+# 書き込みも投稿もしない。結果は注記として出る（ログが落とせないため）。
+on:
+  repository_dispatch:
+    types: [rate-probe]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: 楽天に聞く
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
+          KEYWORDS: ${{ github.event.client_payload.keywords }}
+          MIN_RATE: ${{ github.event.client_payload.min_rate }}
+        run: node "scripts/料率を調べる.mjs"
