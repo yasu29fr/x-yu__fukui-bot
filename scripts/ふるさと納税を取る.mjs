@@ -120,7 +120,11 @@ const 手動 = existsSync(手動の置き場)
 const 集まり = new Map();
 function 入れる(x, k, 経路) {
   const 名 = x.itemName ?? '', 店 = x.shopName ?? '';
-  const 自治体 = 市町.find((m) => 名.includes(m) || 店.includes(m));
+  // 「大野市」は大分県の豊後大野市にも含まれる（2026-09-25、椎茸が3件まぎれた）。
+  // 自治体名だけで判じると他県が入るので、まず福井のものかを見る。
+  // 楽天ふるさと納税の店名は「福井県○○市」の形になっている。
+  if (!/福井/.test(店) && !/福井県/.test(名)) return false;
+  const 自治体 = 市町.find((m) => 店.includes(m)) ?? 市町.find((m) => 名.includes(m));
   if (!自治体) return false;
   if (!/ふるさと納税/.test(名)) return false;
   if ((x.reviewCount ?? 0) < 最低レビュー数) return false;
