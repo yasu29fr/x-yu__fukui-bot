@@ -3,6 +3,8 @@ name: ふるさと納税の返礼品を集める
 # 福井県の返礼品を集めて neta/ふるさと納税.jsonl を作る。投稿はしない。
 # 毎週月曜 9:30 JST（= 日曜 0:30 UTC）。需要は秋から冬に伸びる。
 on:
+  # repository_dispatch では client_payload.dry_run: true で下見だけできる。
+  # （PAT が workflow_dispatch を通せないため。下見の結果は注記として出す）
   repository_dispatch:
     types: [furusato-collect]
   schedule:
@@ -35,12 +37,12 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
-          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          DRY_RUN: ${{ (inputs.dry_run || github.event.client_payload.dry_run) && '1' || '' }}
         run: |
           set -o pipefail
           node "scripts/ふるさと納税を取る.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: コミットする
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !(inputs.dry_run || github.event.client_payload.dry_run) }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
