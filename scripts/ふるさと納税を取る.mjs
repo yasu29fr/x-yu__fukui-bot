@@ -290,7 +290,8 @@ function 名前を整える(生) {
 
 const きょう = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 const 出 = 選ぶ.sort((a, b) => 鉄板の点(b) - 鉄板の点(a)).slice(0, 上限).map((x) => ({
-  itemCode: x.itemCode, 名: 名前を整える(x.itemName), url: x.affiliateUrl,
+  itemCode: x.itemCode, 名: 名前を整える(x.itemName), 生の名: String(x.itemName ?? ''),
+  url: x.affiliateUrl,
   自治体: x.自治体, 寄付額: x.itemPrice, 料率: x.料率, 料率アップ: x.料率アップ === true,
   見込み報酬: 見込み(x), 手で選んだ: x.手で選んだ === true,
   レビュー数: x.reviewCount, レビュー平均: x.reviewAverage,
