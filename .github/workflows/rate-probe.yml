@@ -22,4 +22,6 @@ jobs:
           RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
           KEYWORDS: ${{ github.event.client_payload.keywords }}
           MIN_RATE: ${{ github.event.client_payload.min_rate }}
+          SORT: ${{ github.event.client_payload.sort }}
+          SHOP_CODE: ${{ github.event.client_payload.shop_code }}
         run: node "scripts/料率を調べる.mjs"
