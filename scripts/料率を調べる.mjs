@@ -52,6 +52,7 @@ for (const k of 言葉たち) {
     if (価.length) console.log(`::warning::  中央 ${価[Math.floor(価.length/2)].toLocaleString()}円／最小 ${価[0].toLocaleString()}円／最大 ${価[価.length-1].toLocaleString()}円`);
     for (const x of items.slice(0, 4)) {
       console.log(`::warning::  ${x.affiliateRate}% ／ ${(x.itemPrice ?? 0).toLocaleString()}円 ／ ★${x.reviewAverage ?? '-'}(${x.reviewCount ?? 0}件) ／ ${(x.shopName ?? '').slice(0, 12)} ／ ${(x.itemName ?? '').slice(0, 30)}`);
+      if (process.env.SHOW_REVIEW_URL) console.log(`::warning::    review: ${x.reviewUrl ?? '(無し)'}`);
     }
   } catch (e) { console.log(`::warning::「${k}」で失敗: ${String(e.message ?? e).slice(0, 160)}`); }
   await 眠る(1200);

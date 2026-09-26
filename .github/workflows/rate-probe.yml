@@ -24,4 +24,5 @@ jobs:
           MIN_RATE: ${{ github.event.client_payload.min_rate }}
           SORT: ${{ github.event.client_payload.sort }}
           SHOP_CODE: ${{ github.event.client_payload.shop_code }}
+          SHOW_REVIEW_URL: ${{ github.event.client_payload.show_review_url }}
         run: node "scripts/料率を調べる.mjs"
