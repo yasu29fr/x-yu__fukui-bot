@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 const 置き場 = 'neta/美容候補.jsonl';
 const 設定パス = 'neta/設定.json';
 const 検索 = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
-const ランキング = 'https://app.rakuten.co.jp/services/api/IchibaItem/Ranking/20220601';
+const ランキング = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Ranking/20220601';
 
 const アプリID = process.env.RAKUTEN_APP_ID;
 const アクセスキー = process.env.RAKUTEN_ACCESS_KEY;
@@ -41,7 +41,7 @@ const 何件出す = 決め['何件出す'] ?? 5;
 const 最低レビュー数 = 決め['最低レビュー数'] ?? 500;
 const 最低レビュー平均 = 決め['最低レビュー平均'] ?? 4.0;
 const 上限報酬 = 決め['1件あたりの上限報酬'] ?? 1000;
-const 高い帯を最低 = 決め['高い帯を最低いくつ'] ?? 1;
+const 帯ごとに最低 = 決め['帯ごとに最低いくつ'] ?? 2;
 const 帯たち = 決め['価格帯'] ?? [
   { 名: '数が出る帯', 下: 2000, 上: 8000 },
   { 名: '上限に届く帯', 下: 25000, 上: 200000 },
@@ -80,6 +80,8 @@ async function ランキングを取る() {
         applicationId: アプリID, accessKey: アクセスキー, affiliateId: アフィリエイトID,
         genreId: String(genreId), format: 'json',
       });
+      // ランキングは新しいゲートウェイ側を使う。app.rakuten.co.jp の旧エンドポイントは
+      // この鍵では applicationId が通らない（2026-09-26 確認）。
       const items = ((await 叩く(ランキング, q)).Items ?? []).map((w) => w.Item ?? w);
       for (const x of items) if (x.itemCode) 出.set(x.itemCode, x.rank);
       console.log(`ランキング ${genreId}: ${items.length}件`);
@@ -116,11 +118,21 @@ for (const 帯 of 帯たち) {
   console.log(`${帯.名}（${帯.下.toLocaleString()}〜${帯.上.toLocaleString()}円）… ${集.size}件`);
 }
 
-// 高い帯から最低ぶんを先に取り、残りを点の順で埋める
+// 帯ごとに枠を分ける。
+// 点だけで並べると高い帯が全部を取る（2026-09-26、5件とも高い帯になった）。
+// 高い帯は価格がちがっても全部1,000円の上限に張りつくので、点が横並びで高くなる。
+// 安い帯（1件140〜320円）とは比べられない。だから帯ごとに最低ぶんを確保する。
 const 選ぶ = [];
 const 入った = new Set();
-const 高い = 帯ごと.get(帯たち[帯たち.length - 1].名) ?? [];
-for (const x of 高い.slice(0, 高い帯を最低)) { 選ぶ.push(x); 入った.add(x.itemCode); }
+for (const 帯 of 帯たち) {
+  const たち = 帯ごと.get(帯.名) ?? [];
+  const 枠 = 帯.最低 ?? 帯ごとに最低;
+  for (const x of たち.slice(0, 枠)) {
+    if (選ぶ.length >= 何件出す || 入った.has(x.itemCode)) continue;
+    選ぶ.push(x); 入った.add(x.itemCode);
+  }
+  console.log(`  ${帯.名}: ${たち.length}件から ${Math.min(枠, たち.length)}件`);
+}
 const 全部 = [...帯ごと.values()].flat().sort((a, b) => 点(b) - 点(a));
 for (const x of 全部) {
   if (選ぶ.length >= 何件出す) break;
