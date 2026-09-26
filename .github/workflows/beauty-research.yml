@@ -5,8 +5,12 @@ name: 美容の候補を出す
 on:
   repository_dispatch:
     types: [beauty-research]
+  # GitHub の schedule は毎時00分がいちばん混んでいて、落とされることがある
+  # （2026-09-26、"0 10 * * *" が一度も発火しなかった）。分をずらし、2回仕掛ける。
+  # 1回目が成功していれば2回目は SKIP_IF_FRESH で何もしない。
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "17 10 * * *"   # 19:17 JST
+    - cron: "47 10 * * *"   # 19:47 JST
 
 permissions:
   contents: write
@@ -30,6 +34,7 @@ jobs:
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
           DRY_RUN: ${{ github.event.client_payload.dry_run && '1' || '' }}
+          SKIP_IF_FRESH: ${{ github.event_name == 'schedule' && '1' || '' }}
         run: |
           set -o pipefail
           node "scripts/美容を探す.mjs" | tee -a "$GITHUB_STEP_SUMMARY"

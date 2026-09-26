@@ -35,6 +35,18 @@ if (リファラー) { ヘッダ.referer = リファラー; ヘッダ.origin = n
 const 見せる = (文) => console.log(`::warning::${文}`);
 const 眠る = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 同じ日に2回走らせないための見張り。
+// GitHub の schedule は落ちることがあるので、19:17 と 19:47 の2回仕掛けている。
+// 1回目が成功していれば2回目は何もしない（番号が入れ替わると代表の選定とずれるため）。
+if (process.env.SKIP_IF_FRESH === '1' && existsSync(置き場)) {
+  const 行 = readFileSync(置き場, 'utf8').split('\n').filter((l) => l.trim());
+  const きょう = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  if (行.length && JSON.parse(行[0]).出した日 === きょう) {
+    console.log(`今日（${きょう}）の候補はもうあります（${行.length}件）。何もしません。`);
+    process.exit(0);
+  }
+}
+
 const 設定 = existsSync(設定パス) ? JSON.parse(readFileSync(設定パス, 'utf8')) : {};
 const 決め = 設定['美容の探しかた'] ?? {};
 const 何件出す = 決め['何件出す'] ?? 5;
