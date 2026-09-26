@@ -1,0 +1,49 @@
+name: 美容の候補を出す
+
+# 運営事業部・商品リサーチ担当。毎日19:00 JST（= 10:00 UTC）。
+# 条件に合う商品を5件出す。投稿はしない。決めるのは代表。
+on:
+  repository_dispatch:
+    types: [beauty-research]
+  schedule:
+    - cron: "0 10 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beauty-research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: 楽天から探す
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          RAKUTEN_REFERER: ${{ secrets.RAKUTEN_REFERER }}
+          DRY_RUN: ${{ github.event.client_payload.dry_run && '1' || '' }}
+        run: |
+          set -o pipefail
+          node "scripts/美容を探す.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: コミットする
+        if: ${{ !github.event.client_payload.dry_run }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "neta/美容候補.jsonl" neta/設定.json
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -m "chore(美容): 候補を更新（$(TZ=Asia/Tokyo date +%F)）"
+          for i in 1 2 3 4; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then exit 0; fi
+            sleep $((2 ** i))
+          done
+          exit 1
