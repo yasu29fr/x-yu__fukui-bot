@@ -1,8 +1,8 @@
 {
   "リポジトリ": "yasu29fr/x-yu__fukui-bot",
-  "確認した時刻": "2026-09-26 00:28 JST",
-  "状態": "残高切れ",
-  "止まるか": "はい",
-  "HTTP": 400,
-  "説明": "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."
+  "確認した時刻": "2026-09-26 23:41 JST",
+  "状態": "ok",
+  "止まるか": "いいえ",
+  "HTTP": 200,
+  "説明": "API は呼べます"
 }
