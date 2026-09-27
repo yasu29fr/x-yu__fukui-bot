@@ -143,6 +143,7 @@ const 使えない = (x) => {
   if ((x.itemPrice ?? 0) > 上限価格) return true;   // Threads の流れで買われにくい
   if (/美白/.test(名) && !/薬用|医薬部外品/.test(名)) return true; // 効能を書けない
   if (/\d{1,2}\/\d{1,2}\s*[\(（]/.test(名)) return true; // クーポンの日付入りは数日で嘘になる
+  if (/[〜~]\s*\d{1,2}月\d{1,2}日|\d{1,2}月\d{1,2}日\s*\d{1,2}:\d{2}/.test(名)) return true; // 「〜9月25日23:59」の形も（2026-09-27）
   return false;
 };
 
@@ -178,9 +179,12 @@ const 入った = new Set();
 for (const 帯 of 帯たち) {
   const たち = 帯ごと.get(帯.名) ?? [];
   const 枠 = 帯.最低 ?? 帯ごとに最低;
-  for (const x of たち.slice(0, 枠)) {
-    if (選ぶ.length >= 何件出す || 入った.has(x.itemCode)) continue;
-    選ぶ.push(x); 入った.add(x.itemCode);
+  // 同じ店から2件出さない（2026-09-27、アテニアの化粧水が2件並んだ）
+  let 取った = 0;
+  for (const x of たち) {
+    if (取った >= 枠 || 選ぶ.length >= 何件出す) break;
+    if (入った.has(x.itemCode) || 選ぶ.some((y) => y.shopName === x.shopName)) continue;
+    選ぶ.push(x); 入った.add(x.itemCode); 取った++;
   }
   console.log(`  ${帯.名}: ${たち.length}件から ${Math.min(枠, たち.length)}件`);
 }
@@ -189,7 +193,7 @@ for (const 帯 of 帯たち) {
   if (帯.最大 != null) continue;
   for (const x of 帯ごと.get(帯.名) ?? []) {
     if (選ぶ.length >= 何件出す) break;
-    if (入った.has(x.itemCode)) continue;
+    if (入った.has(x.itemCode) || 選ぶ.some((y) => y.shopName === x.shopName)) continue;
     選ぶ.push(x); 入った.add(x.itemCode);
   }
 }
