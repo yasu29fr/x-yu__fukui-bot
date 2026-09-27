@@ -108,34 +108,6 @@ const 人気 = (x) => Math.log10((x.reviewCount ?? 1) + 10) * ((x.reviewAverage 
 // 「薬用（医薬部外品）」は承認された効能を書けるぶん、投稿が作りやすい。少し上に置く。
 const 点 = (x) => (報酬(x) / 100) * 人気(x) * (x.順位 ? 1.3 : 1) * (x.薬用 ? 1.2 : 1);
 
-// 出しても使えない候補を最初から外す（2026-09-27）。
-// 同じ5件（脱毛器2・使用済み2）が毎日並び、実質1件しか選べなかった。
-// 外す決まりは yu の「美容の投稿を作る.py」の自動選択と同じ。
-const 上限価格 = 決め['自動で選べる上限価格'] ?? 30000;
-const 空ける日数 = 14;
-const 最近使った = new Set();
-try {
-  const url = 'https://raw.githubusercontent.com/yasu29fr/yasu29fr/claude/threads-auto-posting-uhiy6w/neta/'
-    + encodeURIComponent('美容_決定ログ.jsonl');
-  const 文 = await (await fetch(url)).text();
-  const 今日 = Date.now() + 9 * 3600 * 1000;
-  for (const l of 文.split('\n')) {
-    if (!l.trim()) continue;
-    const x = JSON.parse(l);
-    if (x.itemCode && x.埋めた日 && (今日 - Date.parse(x.埋めた日)) / 86400000 < 空ける日数 + 1) 最近使った.add(x.itemCode);
-  }
-  console.log(`直近${空ける日数}日に使った商品: ${最近使った.size}件（外す）`);
-} catch (e) { 見せる(`決定ログが読めませんでした（${String(e.message ?? e).slice(0, 80)}）`); }
-const 使えない = (x) => {
-  const 名 = String(x.itemName ?? '');
-  if (最近使った.has(x.itemCode)) return true;
-  if (/脱毛/.test(名)) return true;                 // 「永久脱毛」と書けず、書ける幅が狭い
-  if ((x.itemPrice ?? 0) > 上限価格) return true;   // Threads の流れで買われにくい
-  if (/美白/.test(名) && !/薬用|医薬部外品/.test(名)) return true; // 効能を書けない
-  if (/\d{1,2}\/\d{1,2}\s*[\(（]/.test(名)) return true; // クーポンの日付入りは数日で嘘になる
-  return false;
-};
-
 const 順位表 = await ランキングを取る();
 const 帯ごと = new Map();
 for (const 帯 of 帯たち) {
@@ -146,7 +118,6 @@ for (const 帯 of 帯たち) {
         if ((x.reviewCount ?? 0) < 最低レビュー数) continue;
         if ((x.reviewAverage ?? 0) < 最低レビュー平均) continue;
         if (集.has(x.itemCode)) continue;
-        if (使えない(x)) continue;
         // 「薬用」「医薬部外品」と書いてあるものは、承認された効能を書ける幅が広い。
         // 化粧品は56項目しか書けない（2026-09-26 確認）。
         const 薬用 = /薬用|医薬部外品/.test(String(x.itemName ?? '')) ? true : false;

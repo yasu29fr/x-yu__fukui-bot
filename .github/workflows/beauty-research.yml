@@ -43,13 +43,21 @@ jobs:
         run: |
           set -o pipefail
           node "scripts/美容を探す.mjs" | tee -a "$GITHUB_STEP_SUMMARY"
+      # 代表への提案（表・推す順・第一候補・素のURL）をここで書く。
+      # 19:20 の窓口タスクはこれを読むだけにして、Mac の接続が無くても動くようにする（2026-09-27）
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 代表への提案を書く
+        run: python "scripts/美容の提案を書く.py" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: コミットする
         if: ${{ !github.event.client_payload.dry_run }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "neta/美容候補.jsonl" neta/設定.json
+          git add "neta/美容候補.jsonl" "neta/美容の提案.md" neta/設定.json
           if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
           git commit -m "chore(美容): 候補を更新（$(TZ=Asia/Tokyo date +%F)）"
           for i in 1 2 3 4; do
