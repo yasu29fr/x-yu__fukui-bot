@@ -87,6 +87,9 @@ async function 探す(語, 帯) {
     keyword: 語, hits: '30', format: 'json', imageFlag: '1', sort: '-reviewCount',
     minPrice: String(帯.下), maxPrice: String(帯.上),
   });
+  // 美容・コスメ・香水（100939）に絞る。絞らないと「シャンプー」で浴室ラックが出た（2026-09-27）。
+  // 美顔器・ドライヤーは家電のジャンルにあるので絞らない。
+  if (!/美顔器|ドライヤー/.test(語)) q.set('genreId', 決め['検索のジャンル'] ?? '100939');
   return ((await 叩く(検索, q)).Items ?? []).map((w) => w.Item ?? w).filter(Boolean);
 }
 
