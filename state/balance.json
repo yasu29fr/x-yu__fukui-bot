@@ -1,8 +1,8 @@
 {
   "リポジトリ": "yasu29fr/x-yu__fukui-bot",
-  "確認した時刻": "2026-09-28 00:15 JST",
-  "状態": "ok",
-  "止まるか": "いいえ",
-  "HTTP": 200,
-  "説明": "API は呼べます"
+  "確認した時刻": "2026-09-29 03:14 JST",
+  "状態": "不明",
+  "止まるか": "はい",
+  "HTTP": 400,
+  "説明": "You have reached your specified API usage limits. You will regain access on 2026-10-01 at 00:00 UTC."
 }
