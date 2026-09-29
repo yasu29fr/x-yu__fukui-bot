@@ -1202,11 +1202,14 @@ def main() -> None:
                         if text.startswith(m_):
                             text = text[len(m_):].lstrip()
                 行数 = [l for l in text.splitlines() if l.strip()]
-                if len(行数) != 3:
+                if not 2 <= len(行数) <= 6:
                     落とす(
                         f"{hour}:00 の本文が3行ではありません（{len(行数)} 行）。"
                         "誰向け・どんなお得・期限で、ちょうど3行です。"
                     )
+                if len(行数) != 3:
+                    # 3行でなくても落とさない（2026-09-30。3行に収まらず枠が空いたため）。2〜6行なら出す
+                    print(f"::warning::{hour}:00 の本文は {len(行数)} 行です（目安は3行）。そのまま出します")
                 # 楽天の検索で入れた商品に「使っている」と書かせない。
                 if is_unused(product):
                     found = USED_VOICE.search(text)
@@ -1238,11 +1241,14 @@ def main() -> None:
                         if text.startswith(m_):
                             text = text[len(m_):].lstrip()
                 行数 = [l for l in text.splitlines() if l.strip()]
-                if len(行数) != 3:
+                if not 2 <= len(行数) <= 6:
                     落とす(
                         f"{hour}:00 の本文が3行ではありません（{len(行数)} 行）。"
                         "誰向け・どんなお得・期限で、ちょうど3行です。"
                     )
+                if len(行数) != 3:
+                    # 3行でなくても落とさない（2026-09-30。3行に収まらず枠が空いたため）。2〜6行なら出す
+                    print(f"::warning::{hour}:00 の本文は {len(行数)} 行です（目安は3行）。そのまま出します")
                 if "エントリー" not in text:
                     落とす(
                         f"{hour}:00 の本文に「エントリー」が入っていません。"
@@ -1273,12 +1279,15 @@ def main() -> None:
                         if text.startswith(m_):
                             text = text[len(m_):].lstrip()
                 行数 = [l for l in text.splitlines() if l.strip()]
-                if len(行数) != 3:
+                if not 2 <= len(行数) <= 6:
                     落とす(
                         f"{hour}:00 の本文が3行ではありません（{len(行数)} 行）。"
                         "誰向け・どんなお得・期限で、ちょうど3行です。"
                     )
-                if len(text) > 120:
+                if len(行数) != 3:
+                    # 3行でなくても落とさない（2026-09-30。3行に収まらず枠が空いたため）。2〜6行なら出す
+                    print(f"::warning::{hour}:00 の本文は {len(行数)} 行です（目安は3行）。そのまま出します")
+                if len(text) > 200:
                     落とす(f"{hour}:00 の本文が長すぎます（{len(text)} 字）。この枠は 40〜90 字です。")
                 泊 = STAYED_VOICE.search(text)
                 if 泊:
