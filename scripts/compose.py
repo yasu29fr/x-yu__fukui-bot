@@ -1196,10 +1196,11 @@ def main() -> None:
                 # 2026-09-25 代表判断で、冒頭の【PR】をやめた。
                 # 冒頭が【PR】だった 9/25 の表示は 5。同じ枠の前日（なし）は約900。
                 if text.startswith(PR_MARKERS):
-                    落とす(
-                        f"{hour}:00 の本文が【PR】で始まっています（先頭 20 字: {text[:20]!r}）。"
-                        "この枠は本文に【PR】を書きません。表示は返信の末尾に付けます。"
-                    )
+                    # 落とさずに外す（2026-09-30。AI が【PR】を付け続け、枠が空いたため）。PR は返信の末尾に付く
+                    print(f"::warning::{hour}:00 の本文の先頭の【PR】を外しました")
+                    for m_ in PR_MARKERS:
+                        if text.startswith(m_):
+                            text = text[len(m_):].lstrip()
                 行数 = [l for l in text.splitlines() if l.strip()]
                 if len(行数) != 3:
                     落とす(
@@ -1231,10 +1232,11 @@ def main() -> None:
                 # 2026-09-25 代表判断で、冒頭の【PR】をやめた。
                 # 冒頭が【PR】だった 9/25 の表示は 5。同じ枠の前日（なし）は約900。
                 if text.startswith(PR_MARKERS):
-                    落とす(
-                        f"{hour}:00 の本文が【PR】で始まっています（先頭 20 字: {text[:20]!r}）。"
-                        "この枠は本文に【PR】を書きません。表示は返信の末尾に付けます。"
-                    )
+                    # 落とさずに外す（2026-09-30。AI が【PR】を付け続け、枠が空いたため）。PR は返信の末尾に付く
+                    print(f"::warning::{hour}:00 の本文の先頭の【PR】を外しました")
+                    for m_ in PR_MARKERS:
+                        if text.startswith(m_):
+                            text = text[len(m_):].lstrip()
                 行数 = [l for l in text.splitlines() if l.strip()]
                 if len(行数) != 3:
                     落とす(
@@ -1265,10 +1267,11 @@ def main() -> None:
                 # 2026-09-25 代表判断で、冒頭の【PR】をやめた。
                 # 冒頭が【PR】だった 9/25 の表示は 5。同じ枠の前日（なし）は約900。
                 if text.startswith(PR_MARKERS):
-                    落とす(
-                        f"{hour}:00 の本文が【PR】で始まっています（先頭 20 字: {text[:20]!r}）。"
-                        "この枠は本文に【PR】を書きません。表示は返信の末尾に付けます。"
-                    )
+                    # 落とさずに外す（2026-09-30。AI が【PR】を付け続け、枠が空いたため）。PR は返信の末尾に付く
+                    print(f"::warning::{hour}:00 の本文の先頭の【PR】を外しました")
+                    for m_ in PR_MARKERS:
+                        if text.startswith(m_):
+                            text = text[len(m_):].lstrip()
                 行数 = [l for l in text.splitlines() if l.strip()]
                 if len(行数) != 3:
                     落とす(
