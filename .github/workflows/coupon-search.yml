@@ -1,0 +1,45 @@
+name: 楽天トラベルの大きいクーポンを探す
+
+# 福井県のクーポン一覧を週1回読み、40%OFF以上のものを neta/宿_大きいクーポン.jsonl に書く。
+# 投稿は yu・福井 のリポジトリが、それぞれ compose のあとで1日1本まで作る。
+# 2026-09-30 代表指示「福井県だけなら週に1回でいい」
+on:
+  repository_dispatch:
+    types: [coupon-search]
+  schedule:
+    - cron: "10 21 * * 1"   # 火曜 06:10 JST（このアカウントの定時実行は数時間遅れる）
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coupon-search
+  cancel-in-progress: false
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: クーポンを探す
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+        run: python "scripts/クーポンを探す.py"
+      - name: コミットする
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "neta/宿_大きいクーポン.jsonl"
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -m "chore(クーポン): 大きいクーポンを更新（$(TZ=Asia/Tokyo date +%F)）"
+          for i in 1 2 3 4; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then exit 0; fi
+            sleep $((2 ** i))
+          done
+          exit 1
