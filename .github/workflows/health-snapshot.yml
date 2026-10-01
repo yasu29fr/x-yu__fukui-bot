@@ -1,0 +1,69 @@
+name: 状態をまとめる
+
+# 毎晩の定時確認（Cowork・WebFetch のみ）が「判定不能」になる項目を、先に調べて
+# state/health.json に書いておく（2026-10-02 追加）。
+# - ワークフローの成否と、失敗したときの理由（アノテーション）
+# - 明日ぶんのキュー（本数・時刻・本文にリンクがあるか・出典元・PR）
+# Actions の中なら GITHUB_TOKEN が使えるので、無認証の 403 を受けない。
+on:
+  # 翌日ぶんの作成が終わったら、成功でも失敗でも走る
+  workflow_run:
+    workflows: ["X 翌日ぶんを作成"]
+    types: [completed]
+  repository_dispatch:
+    types: [health-snapshot]
+  schedule:
+    - cron: "30 11 * * *"   # 20:30 JST（保険。GitHub の schedule は遅れることがある）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  checks: read
+
+concurrency:
+  group: health-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 状態を調べる
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPECTED_PER_DAY: "5"
+        run: node scripts/health-snapshot.mjs
+
+      # 調べられなかったときこそ記録が要る。前のステップが落ちても必ず走らせる。
+      - name: 結果をコミットする
+        if: always()
+        run: |
+          set -euo pipefail
+          TARGET="state/health.json"
+          if [ ! -f "${TARGET}" ]; then
+            echo "${TARGET} が無いので、コミットはしません。"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${TARGET}"
+          if git diff --cached --quiet -- "${TARGET}"; then
+            echo "${TARGET} に変更なし。コミットはしません。"
+            exit 0
+          fi
+          git commit -m "chore(health): $(TZ=Asia/Tokyo date '+%F %H:%M') の状態まとめ"
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push; then
+              exit 0
+            fi
+            wait=$((2 ** attempt))
+            echo "push に失敗。${wait} 秒待って再試行します。"
+            sleep "${wait}"
+          done
+          exit 1
