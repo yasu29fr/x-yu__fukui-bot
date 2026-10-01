@@ -1,0 +1,343 @@
+{
+  "リポジトリ": "yasu29fr/x-yu__fukui-bot",
+  "作成時刻": "2026-10-02 07:58 JST",
+  "今日": "2026-10-02",
+  "状態": "ok",
+  "明日のキュー": {
+    "対象日": "2026-10-03",
+    "本数": 0,
+    "予定本数": 5,
+    "足りない": 5,
+    "時刻": [],
+    "同じ時刻が2本以上": [],
+    "読めない行": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "投稿": []
+  },
+  "ワークフロー": [
+    {
+      "名前": "残高チェック",
+      "ファイル": "balance-check.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 02:07 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36897015488"
+      },
+      "最後の成功": "2026-10-02 02:07 JST",
+      "今日走ったか": true,
+      "24時間の実行": 1,
+      "24時間の失敗": 0,
+      "最後の失敗": {
+        "時刻": "2026-09-30 01:36 JST",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36598953934"
+      },
+      "判定": "成功"
+    },
+    {
+      "名前": "美容の候補を出す",
+      "ファイル": "beauty-research.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-01 11:22 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36805552048"
+      },
+      "最後の成功": "2026-10-01 11:22 JST",
+      "今日走ったか": false,
+      "24時間の実行": 2,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "楽天トラベルの大きいクーポンを探す",
+      "ファイル": "coupon-search.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-30 08:15 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36644202345"
+      },
+      "最後の成功": "2026-09-30 08:15 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "ふるさと納税の返礼品を集める",
+      "ファイル": "furusato-collect.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-28 14:42 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36383078091"
+      },
+      "最後の成功": "2026-09-28 14:42 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "最後の失敗": {
+        "時刻": "2026-09-25 17:59 JST",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36115945932"
+      },
+      "判定": "成功"
+    },
+    {
+      "名前": "状態をまとめる",
+      "ファイル": "health-snapshot.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 07:58 JST",
+        "結果": "in_progress",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36938212339"
+      },
+      "最後の成功": null,
+      "今日走ったか": true,
+      "24時間の実行": 1,
+      "24時間の失敗": 0,
+      "判定": "実行中"
+    },
+    {
+      "名前": "宿リストを作る",
+      "ファイル": "hotel-collect.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-28 13:27 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36377822022"
+      },
+      "最後の成功": "2026-09-28 13:27 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "宿を調べる",
+      "ファイル": "hotel-lookup.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-24 12:39 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/35952335033"
+      },
+      "最後の成功": "2026-09-24 12:39 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "最後の失敗": {
+        "時刻": "2026-09-24 00:48 JST",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/35884259398"
+      },
+      "判定": "成功"
+    },
+    {
+      "名前": "ネタ帳を埋める",
+      "ファイル": "neta-collect.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-01 09:53 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36798447770"
+      },
+      "最後の成功": "2026-10-01 09:53 JST",
+      "今日走ったか": false,
+      "24時間の実行": 1,
+      "24時間の失敗": 0,
+      "最後の失敗": {
+        "時刻": "2026-09-29 10:20 JST",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36507422486"
+      },
+      "判定": "成功"
+    },
+    {
+      "名前": "紹介する商品を足す",
+      "ファイル": "product-fetch.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-28 10:21 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36365642024"
+      },
+      "最後の成功": "2026-09-28 10:21 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "最後の失敗": {
+        "時刻": "2026-09-23 21:28 JST",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/35860706859"
+      },
+      "判定": "成功"
+    },
+    {
+      "名前": "商品の成績をつける",
+      "ファイル": "product-score.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 00:58 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36888406050"
+      },
+      "最後の成功": "2026-10-02 00:58 JST",
+      "今日走ったか": true,
+      "24時間の実行": 1,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "料率を調べる",
+      "ファイル": "rate-probe.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-26 11:54 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36213134001"
+      },
+      "最後の成功": "2026-09-26 11:54 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "テスト",
+      "ファイル": "test.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 07:57 JST",
+        "結果": "success",
+        "きっかけ": "push",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36938072316"
+      },
+      "最後の成功": "2026-10-02 07:57 JST",
+      "今日走ったか": true,
+      "24時間の実行": 1,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "楽天トラベルAPIを試す",
+      "ファイル": "travel-probe.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-24 00:37 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/35882945711"
+      },
+      "最後の成功": "2026-09-24 00:37 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "X 認証の確認",
+      "ファイル": "x-auth-check.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-09-05 15:20 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/33949561813"
+      },
+      "最後の成功": "2026-09-05 15:20 JST",
+      "今日走ったか": false,
+      "24時間の実行": 0,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "X 翌日ぶんを作成",
+      "ファイル": "x-compose.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-01 20:00 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36852655199"
+      },
+      "最後の成功": "2026-10-01 20:00 JST",
+      "今日走ったか": false,
+      "24時間の実行": 1,
+      "24時間の失敗": 0,
+      "最後の失敗": {
+        "時刻": "2026-09-25 20:00 JST",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36127050528"
+      },
+      "判定": "成功"
+    },
+    {
+      "名前": "X 予約投稿",
+      "ファイル": "x-post.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 07:50 JST",
+        "結果": "success",
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36937420812"
+      },
+      "最後の成功": "2026-10-02 07:50 JST",
+      "今日走ったか": true,
+      "24時間の実行": 100,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "X 日次レビュー",
+      "ファイル": "x-review.yml",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 02:01 JST",
+        "結果": "success",
+        "きっかけ": "schedule",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36896295123"
+      },
+      "最後の成功": "2026-10-02 02:01 JST",
+      "今日走ったか": true,
+      "24時間の実行": 2,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    },
+    {
+      "名前": "pages-build-deployment",
+      "ファイル": "pages-build-deployment",
+      "有効": true,
+      "最後の実行": {
+        "時刻": "2026-10-02 07:57 JST",
+        "結果": "success",
+        "きっかけ": "dynamic",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36938071547"
+      },
+      "最後の成功": "2026-10-02 07:57 JST",
+      "今日走ったか": true,
+      "24時間の実行": 13,
+      "24時間の失敗": 0,
+      "判定": "成功"
+    }
+  ]
+}
