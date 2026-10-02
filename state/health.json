@@ -1,14 +1,19 @@
 {
   "リポジトリ": "yasu29fr/x-yu__fukui-bot",
-  "作成時刻": "2026-10-02 07:58 JST",
+  "作成時刻": "2026-10-02 20:01 JST",
   "今日": "2026-10-02",
   "状態": "ok",
   "明日のキュー": {
     "対象日": "2026-10-03",
-    "本数": 0,
+    "本数": 4,
     "予定本数": 5,
-    "足りない": 5,
-    "時刻": [],
+    "足りない": 1,
+    "時刻": [
+      "07:00",
+      "12:00",
+      "15:00",
+      "21:00"
+    ],
     "同じ時刻が2本以上": [],
     "読めない行": [
       1,
@@ -24,7 +29,48 @@
       11,
       12
     ],
-    "投稿": []
+    "投稿": [
+      {
+        "id": "p-2026100207-790d",
+        "時刻": "07:00",
+        "1行目": "iPhone 18 Proの可変絞りに、カメラアプリ「Mavis Camera ",
+        "文字数": 147,
+        "本文にリンク": false,
+        "続きにリンク": false,
+        "出典元あり": false,
+        "PRあり": false
+      },
+      {
+        "id": "p-2026100212-a95v",
+        "時刻": "12:00",
+        "1行目": "スマホで話す動画を撮る日に、ワイヤレスマイク「DJI Mic Mini 2」が気",
+        "文字数": 125,
+        "本文にリンク": false,
+        "続きにリンク": true,
+        "出典元あり": false,
+        "PRあり": true
+      },
+      {
+        "id": "p-2026100215-e9jk",
+        "時刻": "15:00",
+        "1行目": "【福井】温泉が引いてある宿4選",
+        "文字数": 117,
+        "本文にリンク": false,
+        "続きにリンク": true,
+        "出典元あり": false,
+        "PRあり": true
+      },
+      {
+        "id": "p-2026100221-4q3b",
+        "時刻": "21:00",
+        "1行目": "温泉宿に泊まる旅は、カメラ機材を減らしたくなります。",
+        "文字数": 121,
+        "本文にリンク": false,
+        "続きにリンク": false,
+        "出典元あり": false,
+        "PRあり": false
+      }
+    ]
   },
   "ワークフロー": [
     {
@@ -52,13 +98,13 @@
       "ファイル": "beauty-research.yml",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-01 11:22 JST",
+        "時刻": "2026-10-02 11:33 JST",
         "結果": "success",
         "きっかけ": "schedule",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36805552048"
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36956144549"
       },
-      "最後の成功": "2026-10-01 11:22 JST",
-      "今日走ったか": false,
+      "最後の成功": "2026-10-02 11:33 JST",
+      "今日走ったか": true,
       "24時間の実行": 2,
       "24時間の失敗": 0,
       "判定": "成功"
@@ -104,14 +150,14 @@
       "ファイル": "health-snapshot.yml",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-02 07:58 JST",
+        "時刻": "2026-10-02 20:01 JST",
         "結果": "in_progress",
-        "きっかけ": "repository_dispatch",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36938212339"
+        "きっかけ": "workflow_run",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36998729596"
       },
-      "最後の成功": null,
+      "最後の成功": "2026-10-02 07:58 JST",
       "今日走ったか": true,
-      "24時間の実行": 1,
+      "24時間の実行": 2,
       "24時間の失敗": 0,
       "判定": "実行中"
     },
@@ -156,13 +202,13 @@
       "ファイル": "neta-collect.yml",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-01 09:53 JST",
+        "時刻": "2026-10-02 10:10 JST",
         "結果": "success",
         "きっかけ": "schedule",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36798447770"
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36949680348"
       },
-      "最後の成功": "2026-10-01 09:53 JST",
-      "今日走ったか": false,
+      "最後の成功": "2026-10-02 10:10 JST",
+      "今日走ったか": true,
       "24時間の実行": 1,
       "24時間の失敗": 0,
       "最後の失敗": {
@@ -276,13 +322,13 @@
       "ファイル": "x-compose.yml",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-01 20:00 JST",
+        "時刻": "2026-10-02 20:00 JST",
         "結果": "success",
         "きっかけ": "repository_dispatch",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36852655199"
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36998621789"
       },
-      "最後の成功": "2026-10-01 20:00 JST",
-      "今日走ったか": false,
+      "最後の成功": "2026-10-02 20:00 JST",
+      "今日走ったか": true,
       "24時間の実行": 1,
       "24時間の失敗": 0,
       "最後の失敗": {
@@ -296,12 +342,12 @@
       "ファイル": "x-post.yml",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-02 07:50 JST",
+        "時刻": "2026-10-02 20:00 JST",
         "結果": "success",
         "きっかけ": "repository_dispatch",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36937420812"
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36998622318"
       },
-      "最後の成功": "2026-10-02 07:50 JST",
+      "最後の成功": "2026-10-02 20:00 JST",
       "今日走ったか": true,
       "24時間の実行": 100,
       "24時間の失敗": 0,
@@ -312,12 +358,12 @@
       "ファイル": "x-review.yml",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-02 02:01 JST",
+        "時刻": "2026-10-02 19:15 JST",
         "結果": "success",
-        "きっかけ": "schedule",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36896295123"
+        "きっかけ": "repository_dispatch",
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36994437290"
       },
-      "最後の成功": "2026-10-02 02:01 JST",
+      "最後の成功": "2026-10-02 19:15 JST",
       "今日走ったか": true,
       "24時間の実行": 2,
       "24時間の失敗": 0,
@@ -328,16 +374,16 @@
       "ファイル": "pages-build-deployment",
       "有効": true,
       "最後の実行": {
-        "時刻": "2026-10-02 07:57 JST",
-        "結果": "success",
+        "時刻": "2026-10-02 20:01 JST",
+        "結果": "in_progress",
         "きっかけ": "dynamic",
-        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36938071547"
+        "URL": "https://github.com/yasu29fr/x-yu__fukui-bot/actions/runs/36998725623"
       },
-      "最後の成功": "2026-10-02 07:57 JST",
+      "最後の成功": "2026-10-02 15:01 JST",
       "今日走ったか": true,
       "24時間の実行": 13,
       "24時間の失敗": 0,
-      "判定": "成功"
+      "判定": "実行中"
     }
   ]
 }
