@@ -128,7 +128,7 @@ const 上限価格 = 決め['自動で選べる上限価格'] ?? 30000;
 const 空ける日数 = 14;
 const 最近使った = new Set();
 try {
-  const url = 'https://raw.githubusercontent.com/yasu29fr/yasu29fr/claude/threads-auto-posting-uhiy6w/neta/'
+  const url = 'https://raw.githubusercontent.com/yu-fukui/threads_yu-fukui/main/neta/'
     + encodeURIComponent('美容_決定ログ.jsonl');
   const 文 = await (await fetch(url)).text();
   const 今日 = Date.now() + 9 * 3600 * 1000;

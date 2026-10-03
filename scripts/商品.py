@@ -25,7 +25,7 @@ from pathlib import Path
 # X のリポジトリにある本体。yu はここを読む。
 商品の置き場 = Path("neta/商品.jsonl")
 商品のURL = (
-    "https://raw.githubusercontent.com/yasu29fr/x-yu__fukui-bot/main/"
+    "https://raw.githubusercontent.com/yu-fukui/x-yu__fukui-bot/main/"
     "neta/%E5%95%86%E5%93%81.jsonl"
 )
 

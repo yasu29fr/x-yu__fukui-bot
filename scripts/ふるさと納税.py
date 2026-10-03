@@ -29,7 +29,7 @@ from pathlib import Path
 
 置き場 = Path("neta/ふるさと納税.jsonl")
 リストのURL = (
-    "https://raw.githubusercontent.com/yasu29fr/x-yu__fukui-bot/main/"
+    "https://raw.githubusercontent.com/yu-fukui/x-yu__fukui-bot/main/"
     "neta/%E3%81%B5%E3%82%8B%E3%81%95%E3%81%A8%E7%B4%8D%E7%A8%8E.jsonl"
 )
 起点 = date(2026, 1, 1)

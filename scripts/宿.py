@@ -25,7 +25,7 @@ from pathlib import Path
 
 宿の置き場 = Path("neta/宿.jsonl")
 宿のURL = (
-    "https://raw.githubusercontent.com/yasu29fr/x-yu__fukui-bot/main/"
+    "https://raw.githubusercontent.com/yu-fukui/x-yu__fukui-bot/main/"
     "neta/%E5%AE%BF.jsonl"
 )
 起点 = date(2026, 1, 1)
@@ -229,7 +229,7 @@ def 投稿用にする(選んだ: dict) -> dict:
 
 短縮の置き場 = Path("neta/宿_短縮.jsonl")
 短縮のURL = (
-    "https://raw.githubusercontent.com/yasu29fr/x-yu__fukui-bot/main/"
+    "https://raw.githubusercontent.com/yu-fukui/x-yu__fukui-bot/main/"
     "neta/%E5%AE%BF_%E7%9F%AD%E7%B8%AE.jsonl"
 )
 
@@ -313,7 +313,7 @@ def 宿のリンク先(宿: dict, 短縮: dict[int, str] | None = None) -> str:
 
 クーポンの置き場 = Path("neta/宿_クーポン.jsonl")
 クーポンのURL = (
-    "https://raw.githubusercontent.com/yasu29fr/x-yu__fukui-bot/main/"
+    "https://raw.githubusercontent.com/yu-fukui/x-yu__fukui-bot/main/"
     "neta/%E5%AE%BF_%E3%82%AF%E3%83%BC%E3%83%9D%E3%83%B3.jsonl"
 )
 
