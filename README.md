@@ -1,6 +1,6 @@
 # x-bot — X（旧 Twitter）自動投稿の仕組み
 
-`@yu__fukui` 用。Threads の仕組み（`yasu29fr/yasu29fr`）と同じ考え方で、投稿部分だけ X 用に書き直したもの。
+`@yu__fukui` 用。Threads の仕組み（`yu-fukui/threads_yu-fukui`）と同じ考え方で、投稿部分だけ X 用に書き直したもの。
 
 ```
 毎晩 20:00  外部 cron → 翌日ぶんの 3 本を作ってキューに追加
@@ -82,7 +82,7 @@ python -m x_bot post --limit 1
 Threads 版と同じ形で、ジョブを 2 つ登録します。
 
 ```
-URL    : https://api.github.com/repos/yasu29fr/x-yu__fukui-bot/dispatches
+URL    : https://api.github.com/repos/yu-fukui/x-yu__fukui-bot/dispatches
 Method : POST
 Headers: Accept: application/vnd.github+json
          Authorization: Bearer <Contents: Read and write のトークン>

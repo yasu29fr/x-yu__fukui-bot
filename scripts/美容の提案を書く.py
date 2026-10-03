@@ -19,7 +19,7 @@ from zoneinfo import ZoneInfo
 JST = ZoneInfo("Asia/Tokyo")
 候補の置き場 = Path("neta/美容候補.jsonl")
 提案の置き場 = Path("neta/美容の提案.md")
-決定ログのURL = ("https://raw.githubusercontent.com/yasu29fr/yasu29fr/claude/threads-auto-posting-uhiy6w/neta/"
+決定ログのURL = ("https://raw.githubusercontent.com/yu-fukui/threads_yu-fukui/main/neta/"
              + urllib.parse.quote("美容_決定ログ.jsonl"))
 上限価格 = 30000
 避ける語 = ("脱毛器", "脱毛", "永久")

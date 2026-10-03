@@ -65,8 +65,8 @@
   }
   // 保存キーは画面ごとに分ける。
   //
-  // localStorage はドメイン単位で共有される。Threads 版（/yasu29fr/）とこの画面は
-  // どちらも yasu29fr.github.io にあるため、キーが同じだと設定と下書きが混ざる。
+  // localStorage はドメイン単位で共有される。Threads 版（/threads_yu-fukui/）とこの画面は
+  // どちらも yu-fukui.github.io にあるため、キーが同じだと設定と下書きが混ざる。
   // 実際、両方とも "threads-bot.settings" を使っていて上書きし合っていた。
   const STORE_KEY = "x-bot.settings";
   const DRAFT_KEY = "x-bot.draft";

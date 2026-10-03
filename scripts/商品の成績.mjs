@@ -23,8 +23,8 @@ const 商品パス = 'neta/商品.jsonl';
 const よそ = [
   {
     名前: 'yu',
-    queue: 'https://raw.githubusercontent.com/yasu29fr/yasu29fr/claude/threads-auto-posting-uhiy6w/posts/queue.jsonl',
-    metrics: 'https://raw.githubusercontent.com/yasu29fr/yasu29fr/claude/threads-auto-posting-uhiy6w/insights/metrics.jsonl',
+    queue: 'https://raw.githubusercontent.com/yu-fukui/threads_yu-fukui/main/posts/queue.jsonl',
+    metrics: 'https://raw.githubusercontent.com/yu-fukui/threads_yu-fukui/main/insights/metrics.jsonl',
   },
 ];
 
